@@ -8,7 +8,6 @@ permissions:
   contents: write
   packages: write
   id-token: write
-  attestations: write
 
 jobs:
   release:
@@ -22,9 +21,12 @@ jobs:
       - run: uv run pytest
       - run: uv build
       - run: cd dist && sha256sum * > SHA256SUMS
-      - uses: actions/attest-build-provenance@v2
+      - uses: sigstore/gh-action-sigstore-python@v3.4.0
         with:
-          subject-path: "dist/*"
+          inputs: |
+            dist/*.whl
+            dist/*.tar.gz
+          upload-signing-artifacts: true
       - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
@@ -49,4 +51,3 @@ jobs:
           tags: ghcr.io/anasmaar/edith-hermes-mock:${{ github.ref_name }}
           provenance: true
           sbom: true
-
