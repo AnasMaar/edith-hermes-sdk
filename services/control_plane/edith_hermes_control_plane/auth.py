@@ -32,14 +32,19 @@ class Authenticator:
         jwks_url = (
             settings.oidc_jwks_url or settings.oidc_issuer.rstrip("/") + "/.well-known/jwks.json"
         )
-        self._jwks = None if settings.allow_insecure_dev_auth else PyJWKClient(jwks_url)
+        self._jwks = PyJWKClient(jwks_url) if settings.auth_mode == "oidc" else None
 
     async def __call__(self, request: Request) -> Identity:
+        if self.settings.auth_mode == "none":
+            return Identity(
+                request.headers.get("x-edith-tenant", self.settings.anonymous_tenant_id),
+                request.headers.get("x-edith-subject", self.settings.anonymous_subject_id),
+            )
         authorization = request.headers.get("authorization", "")
         if not authorization.startswith("Bearer "):
             raise HTTPException(401, "Bearer authentication is required")
         token = authorization[7:].strip()
-        if self.settings.allow_insecure_dev_auth:
+        if self.settings.auth_mode == "static":
             configured = self.settings.dev_tokens.get(token)
             if not configured:
                 raise HTTPException(401, "Invalid development token")

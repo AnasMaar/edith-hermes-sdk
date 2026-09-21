@@ -19,7 +19,7 @@ from .auth import Identity
 from .config import Settings
 from .database import Database, DurableJob
 from .gateway import HermesGateway
-from .providers import KubernetesProvider
+from .providers import RuntimeRegistry
 
 
 def now() -> str:
@@ -44,12 +44,12 @@ class ProductionEngine:
         self,
         database: Database,
         settings: Settings,
-        kubernetes: KubernetesProvider,
+        runtimes: RuntimeRegistry,
         gateway: HermesGateway,
     ):
         self.database = database
         self.settings = settings
-        self.kubernetes = kubernetes
+        self.runtimes = runtimes
         self.gateway = gateway
 
     @staticmethod
@@ -136,6 +136,30 @@ class ProductionEngine:
         body = arguments.get("body") or {}
         if isinstance(body, dict):
             self._verify_owner(body, identity)
+
+        if operation_id == "getControlPlaneCapabilities":
+            url = self.settings.database_url
+            state = (
+                "memory"
+                if ":memory:" in url
+                else "sqlite"
+                if url.startswith("sqlite")
+                else "postgresql"
+                if url.startswith("postgresql")
+                else "sql"
+            )
+            return 200, {
+                "runtimeProviders": self.runtimes.kinds,
+                "stateBackend": state,
+                "authentication": self.settings.auth_mode,
+                "imageSecurity": {
+                    "digestPinnedBase": self.settings.require_digest_pinned_base,
+                    "vulnerabilityScan": self.settings.require_image_scan,
+                    "signature": self.settings.require_image_signature,
+                },
+                "durableJobs": True,
+                "multiReplicaSafe": state == "postgresql",
+            }
 
         if operation_id == "createImageRecipe":
             recipe_id = self._id("recipe")
@@ -224,18 +248,17 @@ class ProductionEngine:
                 raise Problem(404, "Not found", "Provisioning job was not found")
             return 200, self._provision_document(job)
         if operation_id == "createInstance":
-            managed = (body.get("runtime") or {}).get("managedImageId")
-            if not managed:
-                raise Problem(
-                    422,
-                    "Managed image required",
-                    "Production instances require runtime.managedImageId",
-                )
+            runtime = body.get("runtime") or {}
+            managed = runtime.get("managedImageId")
+            if runtime.get("kind") in {"container", "kubernetes"} and not (
+                managed or runtime.get("image")
+            ):
+                raise Problem(422, "Image required", "This runtime requires image or managedImageId")
             request = {
                 "owner": body["owner"],
                 "name": body["name"],
-                "image": {"managedImageId": managed},
-                "runtime": body["runtime"],
+                **({"image": {"managedImageId": managed}} if managed else {}),
+                "runtime": runtime,
                 "bootstrap": body.get("bootstrap") or {},
                 "labels": body.get("labels") or {},
             }
@@ -267,14 +290,24 @@ class ProductionEngine:
             labels = {**(instance.get("labels") or {}), **(body.get("labels") or {})}
             if body.get("runtime"):
                 runtime = {**instance["runtime"], **body["runtime"]}
-                managed_image_id = runtime.get("managedImageId")
-                if not isinstance(managed_image_id, str):
+                if runtime.get("kind") != instance["runtime"].get("kind"):
                     raise Problem(
-                        422, "Managed image required", "runtime.managedImageId is required"
+                        422,
+                        "Runtime kind is immutable",
+                        "Create a new instance to migrate between runtime providers",
                     )
-                image = await self.required("image", managed_image_id, identity)
-                artifact = await self.kubernetes.provision(
-                    instance["id"], image["immutableReference"], runtime, labels
+                managed_image_id = runtime.get("managedImageId")
+                image_reference = runtime.get("image")
+                if isinstance(managed_image_id, str):
+                    image = await self.required("image", managed_image_id, identity)
+                    image_reference = image["immutableReference"]
+                if runtime.get("kind") in {"container", "kubernetes"} and not image_reference:
+                    raise Problem(
+                        422, "Image required", "runtime.image or runtime.managedImageId is required"
+                    )
+                provider = self.runtimes.get(str(runtime["kind"]))
+                artifact = await provider.provision(
+                    instance["id"], image_reference, runtime, labels
                 )
                 instance.update(
                     runtime=runtime,
@@ -294,23 +327,29 @@ class ProductionEngine:
             instance = await self._instance(arguments["instanceId"], identity)
             return 200, {
                 "instanceId": instance["id"],
-                "facadeVersion": "0.2.0",
+                "facadeVersion": "0.3.0",
                 "upstreamContract": "gateway-contract.openrpc.json",
                 "transports": ["http", "sse", "json_rpc", "websocket"],
                 "nativeMethods": list(HERMES_RPC_METHODS),
                 "contracts": [{"kind": "openrpc", "version": "1"}],
-                "domains": {"production": True, "kubernetes": True, "buildkit": True},
+                "domains": {
+                    "production": True,
+                    "buildkit": True,
+                    **{kind: True for kind in self.runtimes.kinds},
+                },
             }
         if operation_id == "changeInstanceState":
             instance = await self._instance(arguments["instanceId"], identity)
             action = arguments["action"]
             if action in {"start", "resume", "restart", "reconcile"}:
+                provider = self.runtimes.for_identity(instance["runtimeIdentity"])
                 if action == "restart":
-                    await self.kubernetes.scale(instance["runtimeIdentity"], 0)
-                await self.kubernetes.scale(instance["runtimeIdentity"], 1)
+                    await provider.scale(instance["runtimeIdentity"], 0)
+                await provider.scale(instance["runtimeIdentity"], 1)
                 instance.update(status="ready", desiredState="running", updatedAt=now())
             elif action in {"stop", "suspend", "drain"}:
-                await self.kubernetes.scale(instance["runtimeIdentity"], 0)
+                provider = self.runtimes.for_identity(instance["runtimeIdentity"])
+                await provider.scale(instance["runtimeIdentity"], 0)
                 instance.update(status="stopped", desiredState="stopped", updatedAt=now())
             else:
                 raise Problem(422, "Unsupported action", f"Unsupported lifecycle action: {action}")
@@ -325,7 +364,7 @@ class ProductionEngine:
             }
         if operation_id == "deleteInstance":
             instance = await self._instance(arguments["instanceId"], identity)
-            await self.kubernetes.delete(
+            await self.runtimes.for_identity(instance["runtimeIdentity"]).delete(
                 instance["runtimeIdentity"],
                 str(arguments.get("retainData", "false")).lower() == "true",
             )
@@ -626,7 +665,9 @@ class ProductionEngine:
                 )
             elif desired < len(instances):
                 for instance in instances[desired:]:
-                    await self.kubernetes.delete(instance["runtimeIdentity"], retain_data=False)
+                    await self.runtimes.for_identity(instance["runtimeIdentity"]).delete(
+                        instance["runtimeIdentity"], retain_data=False
+                    )
                     await self.database.delete("instance", instance["id"], identity.owner)
             await self.database.put("pool", pool["id"], identity.owner, pool)
             return 200, await self._pool_view(pool, identity)
@@ -638,7 +679,9 @@ class ProductionEngine:
                 if item.get("poolId") == pool["id"]
             ]
             for instance in instances:
-                await self.kubernetes.delete(instance["runtimeIdentity"], retain_data=False)
+                await self.runtimes.for_identity(instance["runtimeIdentity"]).delete(
+                    instance["runtimeIdentity"], retain_data=False
+                )
                 await self.database.delete("instance", instance["id"], identity.owner)
             await self.database.delete("pool", pool["id"], identity.owner)
             return 204, None
@@ -734,11 +777,13 @@ class ProductionEngine:
         template = pool["template"]
         runtime = template["runtime"]
         managed_image_id = runtime.get("managedImageId")
-        if not managed_image_id:
+        if runtime.get("kind") in {"container", "kubernetes"} and not (
+            managed_image_id or runtime.get("image")
+        ):
             raise Problem(
                 422,
-                "Managed image required",
-                "Production pool templates require template.runtime.managedImageId",
+                "Image required",
+                "Container pool templates require runtime.image or managedImageId",
             )
         jobs = list(pool.get("provisioningJobs") or [])
         offset = len(jobs)
@@ -747,8 +792,8 @@ class ProductionEngine:
             request = {
                 "owner": identity.document(),
                 "name": f"{pool['name']}-{offset + index}",
-                "image": {"managedImageId": managed_image_id},
-                "runtime": {**runtime, "kind": "kubernetes", "poolId": pool["id"]},
+                **({"image": {"managedImageId": managed_image_id}} if managed_image_id else {}),
+                "runtime": {**runtime, "poolId": pool["id"]},
                 "bootstrap": template.get("bootstrap") or {},
                 "labels": {**(template.get("labels") or {}), "edith.pool": pool["id"]},
             }

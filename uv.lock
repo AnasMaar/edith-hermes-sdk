@@ -481,7 +481,7 @@ wheels = [
 
 [[package]]
 name = "edith-hermes-sdk"
-version = "0.2.0"
+version = "0.3.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
@@ -492,6 +492,7 @@ dependencies = [
 control-plane = [
     { name = "aiosqlite" },
     { name = "asyncpg" },
+    { name = "docker" },
     { name = "fastapi" },
     { name = "kubernetes-asyncio" },
     { name = "pyjwt", extra = ["crypto"] },
@@ -527,6 +528,7 @@ dev = [
 requires-dist = [
     { name = "aiosqlite", marker = "extra == 'control-plane'", specifier = ">=0.20,<1" },
     { name = "asyncpg", marker = "extra == 'control-plane'", specifier = ">=0.29,<1" },
+    { name = "docker", marker = "extra == 'control-plane'", specifier = ">=7.1,<8" },
     { name = "docker", marker = "extra == 'embedded'", specifier = ">=7.1,<8" },
     { name = "fastapi", marker = "extra == 'control-plane'", specifier = ">=0.115,<1" },
     { name = "httpx", specifier = ">=0.27,<1" },

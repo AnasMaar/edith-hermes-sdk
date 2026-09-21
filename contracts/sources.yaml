@@ -111,11 +111,19 @@ feature_ownership:
       - instance_lifecycle
       - pools
       - leases
+      - external_runtimes
+      - process_runtimes
+      - container_runtimes
       - kubernetes
+      - cloud_adapters
       - placement
       - health
       - connection_discovery
       - per_user_provisioning
+      - provider_capability_discovery
+      - configurable_authentication
+      - sqlite_state
+      - postgresql_state
   image_building:
     source: images
     domains:

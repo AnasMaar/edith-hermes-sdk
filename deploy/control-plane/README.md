@@ -1,11 +1,15 @@
 # Production control plane
 
-This deployment is the real infrastructure implementation behind the SDK contracts. It does not
-use the mock engine. It runs durable jobs in PostgreSQL, sends builds to a remote rootless BuildKit
-daemon, scans and signs immutable images, and reconciles one isolated Kubernetes Deployment, PVC,
-Service and credential Secret per Hermes instance.
+This is the repository's hardened, multi-replica Kubernetes profile. It is not the only topology
+supported by the SDK. It explicitly opts into PostgreSQL, OIDC, BuildKit, Trivy, Cosign/KMS and the
+Kubernetes runtime provider. For SQLite, no-auth, process, local-container and external-runtime
+profiles, see [`../../docs/configuration.md`](../../docs/configuration.md).
 
-## Required infrastructure
+This profile does not use the mock engine. It runs durable jobs in PostgreSQL, sends builds to a
+remote rootless BuildKit daemon, scans and signs immutable images, and reconciles one isolated
+Kubernetes Deployment, PVC, Service and credential Secret per Hermes instance.
+
+## Infrastructure required by this profile
 
 - Kubernetes 1.30 or newer with a default or explicitly configured `ReadWriteOnce` storage class.
 - PostgreSQL 15 or newer reachable from `hermes-system`.

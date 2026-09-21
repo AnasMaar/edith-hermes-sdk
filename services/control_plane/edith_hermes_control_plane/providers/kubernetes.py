@@ -5,13 +5,13 @@ from __future__ import annotations
 import asyncio
 import re
 import secrets
-from dataclasses import dataclass
 from typing import Any
 
 from kubernetes_asyncio import client, config
 from kubernetes_asyncio.client.exceptions import ApiException
 
 from ..config import Settings
+from .runtime import RuntimeArtifact
 
 
 def _name(value: str) -> str:
@@ -19,13 +19,8 @@ def _name(value: str) -> str:
     return normalized[:63].rstrip("-")
 
 
-@dataclass(frozen=True, slots=True)
-class RuntimeArtifact:
-    identity: dict[str, Any]
-    connection: dict[str, Any]
-
-
 class KubernetesProvider:
+    kind = "kubernetes"
     def __init__(self, settings: Settings):
         self.settings = settings
         self.apps: client.AppsV1Api | None = None
@@ -41,6 +36,9 @@ class KubernetesProvider:
 
     async def close(self) -> None:
         await client.ApiClient().close()
+
+    def ready(self) -> bool:
+        return self.apps is not None and self.core is not None
 
     def _apis(self) -> tuple[client.AppsV1Api, client.CoreV1Api]:
         if self.apps is None or self.core is None:
@@ -58,11 +56,14 @@ class KubernetesProvider:
     async def provision(
         self,
         instance_id: str,
-        image: str,
+        image: str | None,
         runtime: dict[str, Any],
         labels: dict[str, str],
     ) -> RuntimeArtifact:
         apps, core = self._apis()
+        image = image or runtime.get("image")
+        if not image:
+            raise RuntimeError("kubernetes runtimes require runtime.image or managedImageId")
         placement = runtime.get("kubernetes") or {}
         namespace = placement.get("namespace") or self.settings.runtime_namespace
         workload = _name(f"hermes-{instance_id}")
@@ -107,6 +108,19 @@ class KubernetesProvider:
             claim,
         )
         resource_spec = runtime.get("resources") or {}
+        resource_requests = {
+            "cpu": str(resource_spec.get("cpu", "500m")),
+            "memory": str(resource_spec.get("memory", "1Gi")),
+        }
+        resource_limits = {
+            "cpu": str(resource_spec.get("cpu", "2")),
+            "memory": str(resource_spec.get("memory", "4Gi")),
+        }
+        if resource_spec.get("ephemeralStorage"):
+            resource_requests["ephemeral-storage"] = str(resource_spec["ephemeralStorage"])
+            resource_limits["ephemeral-storage"] = str(resource_spec["ephemeralStorage"])
+        if resource_spec.get("gpu"):
+            resource_limits["nvidia.com/gpu"] = str(resource_spec["gpu"])
         environment = [client.V1EnvVar(name="HERMES_HOME", value="/opt/data")]
         for key, value in (runtime.get("environment") or {}).items():
             if "value" in value:
@@ -129,6 +143,39 @@ class KubernetesProvider:
                 secret_key_ref=client.V1SecretKeySelector(name=secret_name, key="gateway-token")
             ),
         )
+        volume_mounts = [client.V1VolumeMount(name="data", mount_path="/opt/data")]
+        volumes = [
+            client.V1Volume(
+                name="data",
+                persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(
+                    claim_name=pvc
+                ),
+            )
+        ]
+        for item in runtime.get("volumes") or []:
+            volume_name = _name(str(item["name"]))
+            if volume_name == "data":
+                raise RuntimeError("The data volume name is reserved")
+            source = item.get("source") or {}
+            volume = client.V1Volume(name=volume_name)
+            if source.get("persistentVolumeClaim"):
+                volume.persistent_volume_claim = client.V1PersistentVolumeClaimVolumeSource(
+                    claim_name=str(source["persistentVolumeClaim"])
+                )
+            elif source.get("hostPath"):
+                volume.host_path = client.V1HostPathVolumeSource(path=str(source["hostPath"]))
+            elif source.get("emptyDir"):
+                volume.empty_dir = client.V1EmptyDirVolumeSource()
+            else:
+                raise RuntimeError(f"Volume {item['name']} has no supported source")
+            volumes.append(volume)
+            volume_mounts.append(
+                client.V1VolumeMount(
+                    name=volume_name,
+                    mount_path=str(item["mountPath"]),
+                    read_only=bool(item.get("readOnly", False)),
+                )
+            )
         hermes = client.V1Container(
             name="hermes",
             image=image,
@@ -140,14 +187,8 @@ class KubernetesProvider:
                 client.V1ContainerPort(name="gateway", container_port=self.settings.gateway_port)
             ],
             resources=client.V1ResourceRequirements(
-                requests={
-                    "cpu": str(resource_spec.get("cpu", "500m")),
-                    "memory": str(resource_spec.get("memory", "1Gi")),
-                },
-                limits={
-                    "cpu": str(resource_spec.get("cpu", "2")),
-                    "memory": str(resource_spec.get("memory", "4Gi")),
-                },
+                requests=resource_requests,
+                limits=resource_limits,
             ),
             security_context=client.V1SecurityContext(
                 allow_privilege_escalation=False,
@@ -156,7 +197,7 @@ class KubernetesProvider:
                 run_as_user=10000,
                 run_as_group=10000,
             ),
-            volume_mounts=[client.V1VolumeMount(name="data", mount_path="/opt/data")],
+            volume_mounts=volume_mounts,
         )
         bridge = client.V1Container(
             name="runtime-bridge",
@@ -201,14 +242,7 @@ class KubernetesProvider:
                             seccomp_profile=client.V1SeccompProfile(type="RuntimeDefault"),
                         ),
                         containers=[hermes, bridge],
-                        volumes=[
-                            client.V1Volume(
-                                name="data",
-                                persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(
-                                    claim_name=pvc
-                                ),
-                            )
-                        ],
+                        volumes=volumes,
                         image_pull_secrets=[
                             client.V1LocalObjectReference(name=name)
                             for name in (

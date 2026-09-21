@@ -62,19 +62,19 @@ class HTTPTransport:
     def __init__(
         self,
         base_url: str,
-        token: str,
+        token: str | None = None,
         *,
         timeout: float = 30.0,
         max_retries: int = 2,
         client: httpx.AsyncClient | None = None,
     ):
         self._owns_client = client is None
-        self._authorization = f"Bearer {token}"
+        self._authorization = f"Bearer {token}" if token else None
         self._max_retries = max_retries
         self._client = client or httpx.AsyncClient(
             base_url=base_url.rstrip("/"),
             timeout=timeout,
-            headers={"Authorization": f"Bearer {token}"},
+            headers={"Authorization": f"Bearer {token}"} if token else {},
         )
 
     @staticmethod
@@ -126,7 +126,14 @@ class HTTPTransport:
                     path,
                     params=query,
                     json=body,
-                    headers={"Authorization": self._authorization, **headers},
+                    headers={
+                        **(
+                            {"Authorization": self._authorization}
+                            if self._authorization
+                            else {}
+                        ),
+                        **headers,
+                    },
                 )
             except httpx.TransportError:
                 if not retryable or attempt == self._max_retries:
@@ -160,7 +167,10 @@ class HTTPTransport:
             path,
             params=query,
             json=body,
-            headers={"Authorization": self._authorization, **headers},
+            headers={
+                **({"Authorization": self._authorization} if self._authorization else {}),
+                **headers,
+            },
         ) as response:
             if response.status_code >= 400:
                 raw = await response.aread()

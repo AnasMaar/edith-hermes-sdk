@@ -14,6 +14,7 @@ servers:
       runtimeHost:
         default: hermes-runtime.example.com
 security:
+  - {}
   - bearerAuth: []
 tags:
   - name: Capabilities
@@ -376,4 +377,3 @@ components:
         status: { type: integer }
         detail: { type: string }
         traceId: { type: string }
-

@@ -11,6 +11,7 @@ servers:
     variables:
       imageBuilderHost: { default: hermes-images.example.com }
 security:
+  - {}
   - bearerAuth: []
 tags:
   - name: Recipes

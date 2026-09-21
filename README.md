@@ -1,16 +1,15 @@
 # EDITH Hermes SDK
 
 `edith-hermes-sdk` is the Python control surface for building, provisioning, and operating
-user-owned Hermes runtimes. It supports a remote control plane and embedded drivers through the
-same API. Version 0.2 includes both the persistent mock platform and a production control plane
-with PostgreSQL jobs, BuildKit image publication, vulnerability policy, Cosign signing, OIDC
-tenant isolation, Kubernetes reconciliation, a native Hermes WebSocket bridge, and dynamic tool
-callbacks exposed as MCP.
+user-owned Hermes runtimes. It supports a remote control plane and an in-process control plane
+through the same API. Version 0.3 makes infrastructure policy composable: SQLite or PostgreSQL;
+anonymous, static-token or OIDC authentication; optional scanning and signing; and external,
+process, Docker-compatible container, Kubernetes or adapter-backed cloud runtimes.
 
 ## Install and use
 
 ```bash
-uv add ./dist/edith_hermes_sdk-0.2.0-py3-none-any.whl
+uv add "edith-hermes-sdk[control-plane]"
 ```
 
 ```python
@@ -18,10 +17,41 @@ from edith_hermes import AsyncEdithHermes
 
 async with AsyncEdithHermes.remote(
     base_url="http://localhost:8080",
-    token="dev-user-1",
+    token="dev-user-1",  # omit this when the deployment uses auth_mode="none"
 ) as sdk:
     instances = await sdk.control_plane.list_instances()
 ```
+
+The SDK can also host the real control plane inside the calling Python process—without
+PostgreSQL, OIDC, KMS or Kubernetes:
+
+```python
+from edith_hermes import AsyncEdithHermes
+from edith_hermes_control_plane.config import Settings
+
+settings = Settings(
+    database_url="sqlite+aiosqlite:///./hermes.db",
+    auth_mode="none",
+    enabled_runtime_providers=["container"],  # Docker/Podman-compatible API
+)
+
+async with await AsyncEdithHermes.local(settings=settings) as sdk:
+    capabilities = await sdk.control_plane.get_control_plane_capabilities()
+    job = await sdk.control_plane.provision_user_instance(
+        body={
+            "owner": {"tenantId": "local", "subjectId": "local-user"},
+            "name": "my-hermes",
+            "runtime": {
+                "kind": "container",
+                "image": "nousresearch/hermes-agent:latest",
+            },
+            "bootstrap": {"profile": {"name": "default"}},
+        }
+    )
+    ready = await sdk.wait_for_provisioning_job(job["id"])
+```
+
+See [`docs/configuration.md`](docs/configuration.md) for all provider combinations.
 
 Start the persistent mock server with:
 
@@ -117,12 +147,28 @@ The control plane supports logical and physical isolation:
 - `kubernetes`: create or adopt Kubernetes workload resources.
 - `nous_cloud`: provision lifecycle through the Nous Portal management surface.
 
+These modes are implemented by a runtime-provider registry. Instance updates, start/stop/restart,
+deletion, pool scaling and provisioning all route through the provider recorded in
+`runtimeIdentity`; none of those paths assumes Kubernetes.
+
+| Concern | Lightweight choice | Scale-out/hardened choice |
+| --- | --- | --- |
+| State | SQLite file or SQLite memory database | PostgreSQL |
+| Authentication | None | Static bearer or OIDC/JWKS |
+| Runtime | Existing endpoint, local process, local container | Kubernetes or cloud adapter |
+| Image scan | Disabled | Trivy |
+| Image signature | Disabled | Cosign with a file key, hardware key or KMS URI |
+
+`GET /v1/system/capabilities` (and
+`sdk.control_plane.get_control_plane_capabilities()`) reports the effective non-secret selection.
+
 ## Kubernetes pool model
 
-A Kubernetes pool is a homogeneous `StatefulSet` of Hermes containers. Each pod is one concrete,
-addressable SDK instance with a stable ordinal, stable service DNS name, and its own `/opt/data`
-PVC. Profiles live inside an instance; they are not Kubernetes replicas. Pool leasing selects an
-instance and then a profile, returning both identifiers to the caller.
+The generic control-plane pool creates one independently addressable runtime per desired member.
+With the Kubernetes provider, each member is currently a dedicated `Deployment`, Service, Secret
+and `/opt/data` PVC. The separate static Kubernetes blueprint demonstrates a homogeneous
+`StatefulSet` topology for operators who prefer stable ordinals. Profiles live inside an instance;
+they are not Kubernetes replicas. Pool leasing selects an instance and then a profile.
 
 Use the official `nousresearch/hermes-agent` image as the upstream base. The reference derivative
 in [`deploy/image/Dockerfile`](deploy/image/Dockerfile) runs `hermes serve` directly as UID 10000.

@@ -34,6 +34,8 @@ class FakeBuildKit:
 
 
 class FakeKubernetes:
+    kind = "kubernetes"
+
     def __init__(self) -> None:
         self.apps: object | None = None
 
@@ -249,3 +251,74 @@ async def test_real_control_plane_orchestration_with_provider_fakes(tmp_path: Pa
         assert mcp.json()["result"]["tools"][0]["name"] == "ring_battery"
         await sdk.aclose()
         await http.aclose()
+
+
+@pytest.mark.asyncio
+async def test_sqlite_anonymous_external_runtime_needs_no_enterprise_services(
+    tmp_path: Path,
+) -> None:
+    settings = Settings(
+        database_url=f"sqlite+aiosqlite:///{tmp_path / 'local.db'}",
+        auth_mode="none",
+        enabled_runtime_providers=["external"],
+        worker_poll_seconds=0.01,
+        worker_concurrency=1,
+    )
+    app = create_app(settings, gateway=FakeGateway())  # type: ignore[arg-type]
+    async with app.router.lifespan_context(app):
+        http = httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://control-plane"
+        )
+        sdk = AsyncEdithHermes.remote(base_url="http://control-plane", http_client=http)
+        capabilities = await sdk.control_plane.get_control_plane_capabilities()
+        assert capabilities == {
+            "runtimeProviders": ["external"],
+            "stateBackend": "sqlite",
+            "authentication": "none",
+            "imageSecurity": {
+                "digestPinnedBase": False,
+                "vulnerabilityScan": False,
+                "signature": False,
+            },
+            "durableJobs": True,
+            "multiReplicaSafe": False,
+        }
+        job = await sdk.control_plane.provision_user_instance(
+            body={
+                "owner": {"tenantId": "local", "subjectId": "local-user"},
+                "name": "existing-hermes",
+                "runtime": {
+                    "kind": "external",
+                    "endpoint": "ws://127.0.0.1:9119/api/ws",
+                },
+                "bootstrap": {"profile": {"name": "default"}},
+            }
+        )
+        ready = await wait_until(
+            lambda: sdk.control_plane.get_provisioning_job(job_id=job["id"]),
+            "phase",
+            {"ready", "failed"},
+        )
+        assert ready["phase"] == "ready"
+        instance = await sdk.control_plane.get_instance(instance_id=ready["instanceId"])
+        assert instance["runtimeIdentity"]["provider"] == "external"
+        await sdk.aclose()
+        await http.aclose()
+
+
+@pytest.mark.asyncio
+async def test_sdk_can_embed_real_control_plane(tmp_path: Path) -> None:
+    sdk = await AsyncEdithHermes.local(
+        settings=Settings(
+            database_url=f"sqlite+aiosqlite:///{tmp_path / 'embedded.db'}",
+            auth_mode="none",
+            enabled_runtime_providers=["external"],
+            worker_concurrency=1,
+        )
+    )
+    try:
+        capabilities = await sdk.control_plane.get_control_plane_capabilities()
+        assert capabilities["runtimeProviders"] == ["external"]
+        assert capabilities["authentication"] == "none"
+    finally:
+        await sdk.aclose()

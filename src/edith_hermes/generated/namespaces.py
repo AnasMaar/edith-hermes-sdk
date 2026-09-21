@@ -15,6 +15,9 @@ class _AsyncAPI:
 
 
 class AsyncControlPlaneAPI(_AsyncAPI):
+    async def get_control_plane_capabilities(self, **arguments: Any) -> Any:
+        return await self._transport.invoke(BY_ID['getControlPlaneCapabilities'], arguments)
+
     async def list_instances(self, **arguments: Any) -> Any:
         return await self._transport.invoke(BY_ID['listInstances'], arguments)
 

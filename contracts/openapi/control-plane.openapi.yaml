@@ -1,18 +1,20 @@
 openapi: 3.1.0
 info:
   title: Hermes SDK Control Plane API
-  version: 0.1.0
+  version: 0.3.0
   summary: Provision and address Hermes instances, profiles and pools.
   description: |
     SDK-owned orchestration contract. It complements, rather than replaces, the upstream Hermes
-    gateway OpenRPC contract. All resources are tenant-scoped by the implementation's security
-    principal.
+    gateway OpenRPC contract. Deployments select their authentication, state, runtime and image
+    security providers independently. Resources are scoped by the resolved principal; anonymous
+    single-user deployments use their configured local principal.
 servers:
   - url: https://{controlPlaneHost}
     variables:
       controlPlaneHost:
         default: hermes-control.example.com
 security:
+  - {}
   - bearerAuth: []
 tags:
   - name: Instances
@@ -22,6 +24,19 @@ tags:
   - name: Leases
 
 paths:
+  /v1/system/capabilities:
+    get:
+      tags: [System]
+      operationId: getControlPlaneCapabilities
+      summary: Discover enabled pluggable control-plane providers and policies.
+      responses:
+        '200':
+          description: Effective non-secret deployment capabilities.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ControlPlaneCapabilities' }
+        default: { $ref: '#/components/responses/Error' }
+
   /v1/instances:
     get:
       tags: [Instances]
@@ -418,6 +433,28 @@ components:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
   schemas:
+    ControlPlaneCapabilities:
+      type: object
+      required: [runtimeProviders, stateBackend, authentication, imageSecurity]
+      properties:
+        runtimeProviders:
+          type: array
+          items: { $ref: '#/components/schemas/RuntimeKind' }
+        stateBackend:
+          type: string
+          enum: [memory, sqlite, postgresql, sql]
+        authentication:
+          type: string
+          enum: [none, static, oidc]
+        imageSecurity:
+          type: object
+          required: [digestPinnedBase, vulnerabilityScan, signature]
+          properties:
+            digestPinnedBase: { type: boolean }
+            vulnerabilityScan: { type: boolean }
+            signature: { type: boolean }
+        durableJobs: { type: boolean }
+        multiReplicaSafe: { type: boolean }
     Problem:
       type: object
       required: [type, title, status]
@@ -520,6 +557,11 @@ components:
           items: { type: string }
         hermesHome: { type: string }
         endpoint: { type: string, format: uri }
+        authorization:
+          type: object
+          properties:
+            scheme: { type: string, enum: [bearer, websocket_ticket, none] }
+            token: { type: string, writeOnly: true }
         resources: { $ref: '#/components/schemas/ResourceRequirements' }
         environment:
           type: object
@@ -527,6 +569,10 @@ components:
         volumes:
           type: array
           items: { $ref: '#/components/schemas/VolumeMount' }
+        skipReadinessCheck:
+          type: boolean
+          default: false
+          description: Skip the provider's initial port/readiness wait; intended for custom supervisors and tests.
         kubernetes: { $ref: '#/components/schemas/KubernetesPlacement' }
         cloud:
           type: object
@@ -558,6 +604,7 @@ components:
         bootstrap: { $ref: '#/components/schemas/BootstrapSpec' }
     UpdateInstanceRequest:
       type: object
+      description: Runtime settings may be reconciled, but runtime.kind is immutable for an existing instance.
       properties:
         name: { type: string }
         desiredState: { $ref: '#/components/schemas/DesiredState' }
@@ -593,7 +640,11 @@ components:
       type: object
       description: Provider identity that makes a logical instance traceable to one physical runtime.
       properties:
-        provider: { type: string, enum: [external, process, docker, kubernetes, nous_cloud] }
+        provider: { type: string, enum: [external, process, container, kubernetes, nous_cloud] }
+        endpoint: { type: string, format: uri }
+        processId: { type: integer }
+        containerId: { type: string }
+        containerName: { type: string }
         cluster: { type: string }
         namespace: { type: string }
         workloadKind: { type: string, enum: [StatefulSet, Deployment, Pod, Job] }
@@ -803,7 +854,7 @@ components:
         expiresAt: { type: string, format: date-time }
     ProvisionUserInstanceRequest:
       type: object
-      required: [owner, name, image, runtime]
+      required: [owner, name, runtime]
       properties:
         owner: { $ref: '#/components/schemas/OwnerReference' }
         name: { type: string }
@@ -831,7 +882,24 @@ components:
           type: object
           required: [kind]
           properties:
-            kind: { type: string, enum: [container, kubernetes, nous_cloud] }
+            kind: { type: string, enum: [external, process, container, kubernetes, nous_cloud] }
+            image: { type: string, description: Direct OCI reference for container runtimes. }
+            executable: { type: string, default: hermes }
+            command:
+              type: array
+              items: { type: string }
+            hermesHome: { type: string }
+            endpoint: { type: string, format: uri }
+            authorization:
+              type: object
+              additionalProperties: true
+            environment:
+              type: object
+              additionalProperties: { $ref: '#/components/schemas/EnvironmentValue' }
+            volumes:
+              type: array
+              items: { $ref: '#/components/schemas/VolumeMount' }
+            skipReadinessCheck: { type: boolean, default: false }
             poolId: { type: string }
             resources: { $ref: '#/components/schemas/ResourceRequirements' }
             kubernetes: { $ref: '#/components/schemas/KubernetesPlacement' }

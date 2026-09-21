@@ -11,6 +11,7 @@ servers:
     variables:
       toolPlaneHost: { default: hermes-tools.example.com }
 security:
+  - {}
   - bearerAuth: []
 tags:
   - name: Tool Bundles

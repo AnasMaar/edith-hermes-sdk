@@ -58,10 +58,12 @@ metadata:
   name: edith-hermes-control-plane
   namespace: hermes-system
 data:
+  EDITH_AUTH_MODE: oidc
+  EDITH_RUNTIME_PROVIDERS: kubernetes
   EDITH_OIDC_AUDIENCE: edith-hermes-control-plane
   EDITH_RUNTIME_NAMESPACE: hermes-runtimes
   EDITH_RUNTIME_SERVICE_ACCOUNT: hermes-runtime
-  EDITH_RUNTIME_BRIDGE_IMAGE: ghcr.io/anasmaar/edith-hermes-runtime-bridge:v0.2.0
+  EDITH_RUNTIME_BRIDGE_IMAGE: ghcr.io/anasmaar/edith-hermes-runtime-bridge:v0.3.0
   EDITH_BUILDKIT_ADDRESS: tcp://buildkit.hermes-system.svc:1234
   EDITH_REQUIRE_DIGEST_PINNED_BASE: "true"
   EDITH_REQUIRE_IMAGE_SCAN: "true"
@@ -103,7 +105,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: control-plane
-          image: ghcr.io/anasmaar/edith-hermes-control-plane:v0.2.0
+          image: ghcr.io/anasmaar/edith-hermes-control-plane:v0.3.0
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef: {name: edith-hermes-control-plane}

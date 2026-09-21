@@ -10,7 +10,7 @@ from typing import Any
 from .config import Settings
 from .database import Database, DurableJob
 from .gateway import HermesGateway
-from .providers import BuildKitProvider, KubernetesProvider
+from .providers import BuildKitProvider, RuntimeRegistry
 from .providers.buildkit import BuildCancelled
 
 
@@ -24,13 +24,13 @@ class JobWorker:
         database: Database,
         settings: Settings,
         buildkit: BuildKitProvider,
-        kubernetes: KubernetesProvider,
+        runtimes: RuntimeRegistry,
         gateway: HermesGateway,
     ):
         self.database = database
         self.settings = settings
         self.buildkit = buildkit
-        self.kubernetes = kubernetes
+        self.runtimes = runtimes
         self.gateway = gateway
         self.worker_id = str(uuid.uuid4())
         self._stop = asyncio.Event()
@@ -129,13 +129,15 @@ class JobWorker:
     async def _provision(self, job: DurableJob) -> dict[str, Any]:
         owner = (job.tenant_id, job.subject_id)
         request = job.payload
-        source = request["image"]
+        source = request.get("image") or {}
+        image: dict[str, Any] | None = None
+        image_id: str | None = None
         if "managedImageId" in source:
             image = await self.database.get("image", source["managedImageId"], owner)
             if image is None:
                 raise RuntimeError("The managed image does not exist or belongs to another owner")
             image_id = image["id"]
-        else:
+        elif "build" in source:
             build_request = {
                 "owner": request["owner"],
                 "source": {"recipe": source["build"]["recipe"]},
@@ -148,8 +150,9 @@ class JobWorker:
             image = built["image"]
             image_id = built["imageId"]
         runtime = request["runtime"]
-        if runtime.get("kind") != "kubernetes":
-            raise RuntimeError("The production provider currently requires runtime.kind=kubernetes")
+        kind = str(runtime.get("kind") or "")
+        provider = self.runtimes.get(kind)
+        image_reference = image["immutableReference"] if image else runtime.get("image")
         instance_id = "instance_" + uuid.uuid4().hex
         instance = {
             "id": instance_id,
@@ -157,8 +160,8 @@ class JobWorker:
             "name": request["name"],
             "runtime": {
                 **runtime,
-                "managedImageId": image_id,
-                "image": image["immutableReference"],
+                **({"managedImageId": image_id} if image_id else {}),
+                **({"image": image_reference} if image_reference else {}),
             },
             "status": "provisioning",
             "desiredState": "running",
@@ -169,9 +172,9 @@ class JobWorker:
             "updatedAt": now(),
         }
         await self.database.put("instance", instance_id, owner, instance)
-        artifact = await self.kubernetes.provision(
+        artifact = await provider.provision(
             instance_id,
-            image["immutableReference"],
+            image_reference,
             runtime,
             request.get("labels") or {},
         )
@@ -183,8 +186,9 @@ class JobWorker:
             updatedAt=now(),
         )
         await self.database.put("instance", instance_id, owner, instance)
-        image["activeInstanceReferences"] = int(image.get("activeInstanceReferences", 0)) + 1
-        await self.database.put("image", image_id, owner, image)
+        if image is not None and image_id is not None:
+            image["activeInstanceReferences"] = int(image.get("activeInstanceReferences", 0)) + 1
+            await self.database.put("image", image_id, owner, image)
         profile_data = (request.get("bootstrap") or {}).get("profile") or {"name": "default"}
         native = await self.gateway.invoke(artifact.connection, "profiles.create", profile_data)
         native_result = native.get("result") or {}
@@ -200,7 +204,7 @@ class JobWorker:
         }
         await self.database.put("profile", profile_id, owner, profile)
         return {
-            "managedImageId": image_id,
+            **({"managedImageId": image_id} if image_id else {}),
             "instanceId": instance_id,
             "profileId": profile_id,
             "connection": artifact.connection,

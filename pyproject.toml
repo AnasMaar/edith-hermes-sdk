@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "edith-hermes-sdk"
-version = "0.2.0"
+version = "0.3.0"
 description = "Python SDK for building, provisioning, and controlling Hermes runtimes"
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
@@ -21,6 +21,7 @@ embedded = [
 control-plane = [
   "aiosqlite>=0.20,<1",
   "asyncpg>=0.29,<1",
+  "docker>=7.1,<8",
   "fastapi>=0.115,<1",
   "kubernetes-asyncio>=31,<34",
   "pyjwt[crypto]>=2.9,<3",
@@ -49,7 +50,10 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/edith_hermes"]
+packages = [
+  "src/edith_hermes",
+  "services/control_plane/edith_hermes_control_plane",
+]
 
 [tool.pytest.ini_options]
 addopts = "-q"
@@ -69,3 +73,7 @@ ignore = ["E501"]
 python_version = "3.10"
 strict = true
 packages = ["edith_hermes"]
+
+[[tool.mypy.overrides]]
+module = ["docker", "kubernetes_asyncio", "kubernetes_asyncio.*"]
+ignore_missing_imports = true
