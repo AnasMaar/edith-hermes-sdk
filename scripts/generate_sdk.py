@@ -16,6 +16,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 OPENAPI_DIR = ROOT / "contracts" / "openapi"
 OPENRPC_PATH = ROOT / "contracts" / "vendor" / "hermes" / "gateway-contract.openrpc.json"
+INFERENCE_PATH = ROOT / "contracts" / "vendor" / "nous" / "inference.openapi.json"
 OUTPUT = ROOT / "src" / "edith_hermes" / "generated"
 HTTP_METHODS = {"get", "put", "post", "delete", "options", "head", "patch", "trace"}
 NAMESPACES = {
@@ -200,6 +201,18 @@ def main() -> None:
         operations = openapi_operations(OPENAPI_DIR / filename, namespace)
         all_operations.extend(operations)
         grouped[namespace] = (class_name, operations)
+
+    inference_operations = openapi_operations(INFERENCE_PATH, "inference")
+    inference_names = {
+        "/chat/completions": ("createChatCompletion", "create_chat_completion"),
+        "/completions": ("createCompletion", "create_completion"),
+    }
+    for operation in inference_operations:
+        original_path = operation["path"]
+        operation["path"] = "/v1/inference" + original_path
+        operation["operation_id"], operation["python_name"] = inference_names[original_path]
+    all_operations.extend(inference_operations)
+    grouped["inference"] = ("AsyncInferenceAPI", inference_operations)
 
     openrpc = json.loads(OPENRPC_PATH.read_text(encoding="utf-8"))
     rpc_methods = [method["name"] for method in openrpc.get("methods", [])]

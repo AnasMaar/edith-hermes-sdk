@@ -9,8 +9,16 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_all_contract_operations_are_generated() -> None:
-    assert len(OPERATIONS) == 61
-    assert len({operation["operation_id"] for operation in OPERATIONS}) == 61
+    assert len(OPERATIONS) == 63
+    assert len({operation["operation_id"] for operation in OPERATIONS}) == 63
+    assert {
+        operation["operation_id"]
+        for operation in OPERATIONS
+        if operation["namespace"] == "inference"
+    } == {
+        "createChatCompletion",
+        "createCompletion",
+    }
 
 
 def test_pinned_gateway_is_complete() -> None:

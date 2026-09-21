@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "edith-hermes-sdk"
-version = "0.1.0"
+version = "0.2.0"
 description = "Python SDK for building, provisioning, and controlling Hermes runtimes"
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
@@ -18,18 +18,34 @@ embedded = [
   "docker>=7.1,<8",
   "kubernetes-asyncio>=31,<34",
 ]
+control-plane = [
+  "aiosqlite>=0.20,<1",
+  "asyncpg>=0.29,<1",
+  "fastapi>=0.115,<1",
+  "kubernetes-asyncio>=31,<34",
+  "pyjwt[crypto]>=2.9,<3",
+  "sqlalchemy[asyncio]>=2.0,<3",
+  "uvicorn[standard]>=0.32,<1",
+  "websockets>=14,<16",
+]
 
 [dependency-groups]
 dev = [
   "build>=1.2,<2",
+  "aiosqlite>=0.20,<1",
+  "asyncpg>=0.29,<1",
   "fastapi>=0.115,<1",
+  "kubernetes-asyncio>=31,<34",
   "mypy>=1.11,<2",
+  "pyjwt[crypto]>=2.9,<3",
   "pytest>=8.3,<9",
   "pytest-asyncio>=0.24,<1",
   "pyyaml>=6,<7",
   "respx>=0.21,<1",
   "ruff>=0.8,<1",
+  "sqlalchemy[asyncio]>=2.0,<3",
   "uvicorn>=0.32,<1",
+  "websockets>=14,<16",
 ]
 
 [tool.hatch.build.targets.wheel]

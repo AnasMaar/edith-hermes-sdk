@@ -2,13 +2,15 @@
 
 `edith-hermes-sdk` is the Python control surface for building, provisioning, and operating
 user-owned Hermes runtimes. It supports a remote control plane and embedded drivers through the
-same API. Version 0.1 provides the complete generated interface plus a persistent mock platform;
-real BuildKit and Kubernetes reconciliation are the next production milestone.
+same API. Version 0.2 includes both the persistent mock platform and a production control plane
+with PostgreSQL jobs, BuildKit image publication, vulnerability policy, Cosign signing, OIDC
+tenant isolation, Kubernetes reconciliation, a native Hermes WebSocket bridge, and dynamic tool
+callbacks exposed as MCP.
 
 ## Install and use
 
 ```bash
-uv add ./dist/edith_hermes_sdk-0.1.0-py3-none-any.whl
+uv add ./dist/edith_hermes_sdk-0.2.0-py3-none-any.whl
 ```
 
 ```python
@@ -29,6 +31,10 @@ docker compose -f deploy/compose.yaml up --build
 
 The default development identities are `dev-user-1` and `dev-user-2`. Override
 `EDITH_MOCK_TOKENS` with a JSON token-to-owner map outside local development.
+
+Deploy the real control plane using
+[`deploy/control-plane/README.md`](deploy/control-plane/README.md). The mock image is for local
+contract tests only and is never used by the production deployment.
 
 This repository defines a contract-first SDK for controlling one or many Hermes Agent runtimes.
 
@@ -75,7 +81,7 @@ and may allocate leases for workload routing.
 The generated SDK should expose:
 
 ```text
-sdk.controlPlane     generated from control-plane.openapi.yaml
+sdk.control_plane    generated from control-plane.openapi.yaml
 sdk.images           generated from images.openapi.yaml
 sdk.runtime          generated from runtime.openapi.yaml
 sdk.tools            generated from tools.openapi.yaml
@@ -144,8 +150,8 @@ image recipe
   -> runtime and native Hermes calls
 ```
 
-Use `sdk.images.startImageBuild()` when image creation and instance creation are separate product
-steps. Use `sdk.controlPlane.provisionUserInstance()` for the single-call workflow: it accepts
+Use `sdk.images.start_image_build()` when image creation and instance creation are separate product
+steps. Use `sdk.control_plane.provision_user_instance()` for the single-call workflow: it accepts
 either a `managedImageId` or an inline build recipe, reuses an identical verified image when
 allowed, creates the container or Kubernetes pod, bootstraps its profile and ultimately returns
 the `instanceId`, `profileId`, and connection information.

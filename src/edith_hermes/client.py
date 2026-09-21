@@ -13,6 +13,7 @@ from .generated.namespaces import (
     AsyncControlPlaneAPI,
     AsyncGatewayAPI,
     AsyncImagesAPI,
+    AsyncInferenceAPI,
     AsyncRuntimeAPI,
     AsyncToolsAPI,
 )
@@ -29,8 +30,8 @@ class AsyncEdithHermes:
         self.runtime = AsyncRuntimeAPI(transport)
         self.tools = AsyncToolsAPI(transport)
         self.gateway = AsyncGatewayAPI(transport)
-        # These remain generic until their external contracts are snapshotted.
-        self.inference = _AsyncDynamicAPI(transport, "inference")
+        self.inference = AsyncInferenceAPI(transport)
+        # Nous Portal management remains generic until its MCP contract can be vendored.
         self.cloud = _AsyncDynamicAPI(transport, "cloud")
 
     @classmethod

@@ -120,6 +120,14 @@ class AsyncImagesAPI(_AsyncAPI):
         return await self._transport.invoke(BY_ID['deleteManagedImage'], arguments)
 
 
+class AsyncInferenceAPI(_AsyncAPI):
+    async def create_chat_completion(self, **arguments: Any) -> Any:
+        return await self._transport.invoke(BY_ID['createChatCompletion'], arguments)
+
+    async def create_completion(self, **arguments: Any) -> Any:
+        return await self._transport.invoke(BY_ID['createCompletion'], arguments)
+
+
 class AsyncRuntimeAPI(_AsyncAPI):
     async def get_instance_runtime_capabilities(self, **arguments: Any) -> Any:
         return await self._transport.invoke(BY_ID['getInstanceRuntimeCapabilities'], arguments)

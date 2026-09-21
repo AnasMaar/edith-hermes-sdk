@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
-# Production builds should override this with a release tag or, preferably, a digest.
-ARG HERMES_BASE_IMAGE=nousresearch/hermes-agent:latest
+# Required: supply a digest-pinned nousresearch/hermes-agent base through --build-arg.
+ARG HERMES_BASE_IMAGE
 FROM ${HERMES_BASE_IMAGE}
 
 LABEL org.opencontainers.image.title="Hermes SDK Kubernetes Runtime" \
@@ -21,4 +21,3 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
 
 ENTRYPOINT ["/opt/hermes/.venv/bin/hermes"]
 CMD ["serve", "--host", "0.0.0.0", "--port", "9119"]
-

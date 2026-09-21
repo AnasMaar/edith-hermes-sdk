@@ -34,9 +34,9 @@ Build and push an immutable image:
 ```bash
 docker build \
   --build-arg HERMES_BASE_IMAGE=nousresearch/hermes-agent:<release-or-digest> \
-  -t registry.example.com/hermes-sdk-runtime:0.1.0 \
+  -t registry.example.com/hermes-sdk-runtime:0.2.0 \
   -f deploy/image/Dockerfile .
-docker push registry.example.com/hermes-sdk-runtime:0.1.0
+docker push registry.example.com/hermes-sdk-runtime:0.2.0
 ```
 
 Replace `hermes-sdk-runtime:dev` in the StatefulSet with the pushed digest. Do not deploy
@@ -80,4 +80,3 @@ Label the control-plane namespace as expected by the NetworkPolicy:
 ```bash
 kubectl label namespace hermes-system kubernetes.io/metadata.name=hermes-system --overwrite
 ```
-

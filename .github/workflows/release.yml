@@ -39,6 +39,15 @@ jobs:
 
   container:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - image: edith-hermes-mock
+            file: services/mock_server/Dockerfile
+          - image: edith-hermes-control-plane
+            file: services/control_plane/Dockerfile
+          - image: edith-hermes-runtime-bridge
+            file: services/runtime_bridge/Dockerfile
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -50,8 +59,8 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
-          file: services/mock_server/Dockerfile
+          file: ${{ matrix.file }}
           push: true
-          tags: ghcr.io/anasmaar/edith-hermes-mock:${{ github.ref_name }}
+          tags: ghcr.io/anasmaar/${{ matrix.image }}:${{ github.ref_name }}
           provenance: true
           sbom: true

@@ -19,6 +19,7 @@ except ImportError as exc:  # pragma: no cover
 ROOT = Path(__file__).resolve().parents[1]
 OPENAPI_DIR = ROOT / "contracts" / "openapi"
 KUBERNETES_MANIFEST = ROOT / "deploy" / "kubernetes" / "hermes-pool.yaml"
+PRODUCTION_MANIFEST = ROOT / "deploy" / "control-plane" / "production.yaml"
 HTTP_METHODS = {"get", "put", "post", "delete", "options", "head", "patch", "trace"}
 
 
@@ -204,9 +205,34 @@ def validate_kubernetes_blueprint() -> list[str]:
     return errors
 
 
+def validate_production_manifest() -> list[str]:
+    try:
+        documents = list(yaml.safe_load_all(PRODUCTION_MANIFEST.read_text(encoding="utf-8")))
+    except Exception as exc:  # noqa: BLE001
+        return [f"{PRODUCTION_MANIFEST.relative_to(ROOT)}: cannot parse YAML: {exc}"]
+    resources = {
+        (
+            document.get("kind"),
+            document.get("metadata", {}).get("namespace"),
+            document.get("metadata", {}).get("name"),
+        )
+        for document in documents
+        if isinstance(document, dict)
+    }
+    required = {
+        ("Deployment", "hermes-system", "edith-hermes-control-plane"),
+        ("StatefulSet", "hermes-system", "buildkit"),
+        ("Role", "hermes-runtimes", "edith-hermes-runtime-reconciler"),
+        ("NetworkPolicy", "hermes-system", "buildkit-only-from-control-plane"),
+        ("NetworkPolicy", "hermes-runtimes", "hermes-runtime-ingress"),
+    }
+    missing = required - resources
+    return [f"Production manifest is missing resources: {sorted(missing)}"] if missing else []
+
+
 def main() -> int:
     files = sorted(OPENAPI_DIR.glob("*.openapi.yaml"))
-    errors = validate_sources() + validate_kubernetes_blueprint()
+    errors = validate_sources() + validate_kubernetes_blueprint() + validate_production_manifest()
     titles: dict[str, Path] = {}
     for path in files:
         document = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -225,7 +251,7 @@ def main() -> int:
         return 1
     print(
         f"Validated {len(files)} OpenAPI contracts, contracts/sources.yaml, "
-        "and the Kubernetes runtime blueprint"
+        "and the Kubernetes production blueprints"
     )
     return 0
 
