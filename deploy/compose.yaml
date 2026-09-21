@@ -1,0 +1,16 @@
+services:
+  mock-server:
+    build:
+      context: ..
+      dockerfile: services/mock_server/Dockerfile
+    environment:
+      EDITH_MOCK_TOKENS: >-
+        {"dev-user-1":{"tenantId":"dev","subjectId":"user-1"},"dev-user-2":{"tenantId":"dev","subjectId":"user-2"}}
+    ports:
+      - "8080:8080"
+    volumes:
+      - mock-state:/data
+
+volumes:
+  mock-state: {}
+

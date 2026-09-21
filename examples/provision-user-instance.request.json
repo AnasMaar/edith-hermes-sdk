@@ -1,0 +1,64 @@
+{
+  "owner": {
+    "tenantId": "tenant_acme",
+    "subjectId": "user_42"
+  },
+  "name": "user-42-hermes",
+  "image": {
+    "build": {
+      "recipe": {
+        "owner": {
+          "tenantId": "tenant_acme",
+          "subjectId": "user_42"
+        },
+        "name": "user-42-runtime",
+        "baseImage": "nousresearch/hermes-agent@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "platforms": [
+          "linux/amd64"
+        ],
+        "packages": {
+          "apt": [
+            "jq"
+          ],
+          "python": [
+            "pandas==2.3.2"
+          ]
+        },
+        "labels": {
+          "hermes.sdk.recipe": "user-42-runtime"
+        }
+      },
+      "repository": "registry.example.com/hermes/users/user-42",
+      "registryCredentialRef": "secret://registries/production",
+      "reuseMatchingImage": true
+    }
+  },
+  "runtime": {
+    "kind": "kubernetes",
+    "poolId": "pool_general",
+    "resources": {
+      "cpu": "2",
+      "memory": "4Gi"
+    },
+    "kubernetes": {
+      "namespace": "hermes-runtimes",
+      "imagePullPolicy": "IfNotPresent",
+      "persistentVolumeSize": "5Gi"
+    }
+  },
+  "bootstrap": {
+    "profile": {
+      "name": "default",
+      "model": "provider/model-name",
+      "config": {}
+    },
+    "toolBundles": [
+      "bundle_standard"
+    ]
+  },
+  "labels": {
+    "customer": "user_42",
+    "environment": "production"
+  }
+}
+

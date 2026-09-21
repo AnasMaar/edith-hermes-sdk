@@ -1,0 +1,379 @@
+openapi: 3.1.0
+info:
+  title: Hermes SDK Runtime API
+  version: 0.1.0
+  summary: Address a Hermes runtime through an explicit instance, profile and session.
+  description: |
+    A stable, resource-oriented facade for common Hermes runtime operations. Native Hermes
+    behavior is never hidden: the rpc operation accepts any method declared by the pinned
+    upstream gateway OpenRPC document and is the compatibility floor for newly added methods.
+  x-hermes-openrpc: https://raw.githubusercontent.com/NousResearch/hermes-agent/5470f260cac7bafc7b98676dfba1c12fcddc3234/apps/shared/src/gateway-contract.openrpc.json
+servers:
+  - url: https://{runtimeHost}
+    variables:
+      runtimeHost:
+        default: hermes-runtime.example.com
+security:
+  - bearerAuth: []
+tags:
+  - name: Capabilities
+  - name: Sessions
+  - name: Turns
+  - name: Events
+  - name: Native RPC
+paths:
+  /v1/instances/{instanceId}/capabilities:
+    get:
+      tags: [Capabilities]
+      operationId: getInstanceRuntimeCapabilities
+      summary: Discover supported facade and native gateway features.
+      parameters:
+        - $ref: '#/components/parameters/InstanceId'
+      responses:
+        '200':
+          description: Runtime capability document.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RuntimeCapabilities' }
+        default: { $ref: '#/components/responses/Error' }
+  /v1/instances/{instanceId}/profiles/{profileId}/sessions:
+    get:
+      tags: [Sessions]
+      operationId: listSessions
+      parameters:
+        - $ref: '#/components/parameters/InstanceId'
+        - $ref: '#/components/parameters/ProfileId'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Sessions for this exact instance and profile.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionPage' }
+        default: { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Sessions]
+      operationId: createSession
+      parameters:
+        - $ref: '#/components/parameters/InstanceId'
+        - $ref: '#/components/parameters/ProfileId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateSessionRequest' }
+      responses:
+        '201':
+          description: Session created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        default: { $ref: '#/components/responses/Error' }
+  /v1/instances/{instanceId}/profiles/{profileId}/sessions/{sessionId}:
+    get:
+      tags: [Sessions]
+      operationId: getSession
+      parameters:
+        - $ref: '#/components/parameters/InstanceId'
+        - $ref: '#/components/parameters/ProfileId'
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: Session state.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        default: { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [Sessions]
+      operationId: deleteSession
+      parameters:
+        - $ref: '#/components/parameters/InstanceId'
+        - $ref: '#/components/parameters/ProfileId'
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '204': { description: Session deleted. }
+        default: { $ref: '#/components/responses/Error' }
+  /v1/instances/{instanceId}/profiles/{profileId}/sessions/{sessionId}/actions:
+    post:
+      tags: [Sessions]
+      operationId: actOnSession
+      summary: Resume, activate, close, interrupt, compress, branch or undo a session.
+      parameters:
+        - $ref: '#/components/parameters/InstanceId'
+        - $ref: '#/components/parameters/ProfileId'
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SessionAction' }
+      responses:
+        '200':
+          description: Updated session or newly branched session.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '202': { description: Action accepted. }
+        default: { $ref: '#/components/responses/Error' }
+  /v1/instances/{instanceId}/profiles/{profileId}/sessions/{sessionId}/turns:
+    post:
+      tags: [Turns]
+      operationId: submitTurn
+      summary: Submit user input and optionally bind tools for this turn.
+      parameters:
+        - $ref: '#/components/parameters/InstanceId'
+        - $ref: '#/components/parameters/ProfileId'
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SubmitTurnRequest' }
+      responses:
+        '202':
+          description: Turn accepted.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Turn' }
+        default: { $ref: '#/components/responses/Error' }
+  /v1/instances/{instanceId}/profiles/{profileId}/sessions/{sessionId}/turns/{turnId}:
+    get:
+      tags: [Turns]
+      operationId: getTurn
+      parameters:
+        - $ref: '#/components/parameters/InstanceId'
+        - $ref: '#/components/parameters/ProfileId'
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/TurnId'
+      responses:
+        '200':
+          description: Turn status and accumulated output.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Turn' }
+        default: { $ref: '#/components/responses/Error' }
+  /v1/instances/{instanceId}/profiles/{profileId}/sessions/{sessionId}/turns/{turnId}/actions:
+    post:
+      tags: [Turns]
+      operationId: actOnTurn
+      summary: Stop, steer or answer an approval request for a running turn.
+      parameters:
+        - $ref: '#/components/parameters/InstanceId'
+        - $ref: '#/components/parameters/ProfileId'
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/TurnId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TurnAction' }
+      responses:
+        '202': { description: Action accepted. }
+        default: { $ref: '#/components/responses/Error' }
+  /v1/instances/{instanceId}/profiles/{profileId}/sessions/{sessionId}/events:
+    get:
+      tags: [Events]
+      operationId: streamSessionEvents
+      summary: Stream normalized and native Hermes events using SSE.
+      parameters:
+        - $ref: '#/components/parameters/InstanceId'
+        - $ref: '#/components/parameters/ProfileId'
+        - $ref: '#/components/parameters/SessionId'
+        - name: after
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Server-sent event stream. The data field contains a RuntimeEvent JSON value.
+          content:
+            text/event-stream:
+              schema: { type: string }
+        default: { $ref: '#/components/responses/Error' }
+  /v1/instances/{instanceId}/profiles/{profileId}/rpc:
+    post:
+      tags: [Native RPC]
+      operationId: invokeHermesRpc
+      summary: Invoke any method in the authoritative Hermes gateway OpenRPC contract.
+      description: |
+        Lossless compatibility escape hatch. Implementations forward the JSON-RPC request to the
+        selected instance/profile and preserve native result and error shapes. SDK generators
+        should additionally generate typed convenience methods directly from x-hermes-openrpc.
+      parameters:
+        - $ref: '#/components/parameters/InstanceId'
+        - $ref: '#/components/parameters/ProfileId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/JsonRpcRequest' }
+      responses:
+        '200':
+          description: Native JSON-RPC response.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JsonRpcResponse' }
+        default: { $ref: '#/components/responses/Error' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    InstanceId: { name: instanceId, in: path, required: true, schema: { type: string } }
+    ProfileId: { name: profileId, in: path, required: true, schema: { type: string } }
+    SessionId: { name: sessionId, in: path, required: true, schema: { type: string } }
+    TurnId: { name: turnId, in: path, required: true, schema: { type: string } }
+    Cursor: { name: cursor, in: query, schema: { type: string } }
+    IdempotencyKey: { name: Idempotency-Key, in: header, schema: { type: string } }
+  responses:
+    Error:
+      description: Request failed.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    RuntimeCapabilities:
+      type: object
+      required: [facadeVersion, upstreamContract, transports, nativeMethods]
+      properties:
+        facadeVersion: { type: string }
+        upstreamContract: { type: string, format: uri }
+        upstreamRevision: { type: string }
+        transports: { type: array, items: { enum: [http, sse, websocket, json_rpc] } }
+        nativeMethods: { type: array, items: { type: string } }
+        notifications: { type: array, items: { type: string } }
+        serverRequests: { type: array, items: { type: string } }
+        extensions: { type: object, additionalProperties: true }
+    Session:
+      type: object
+      required: [id, instanceId, profileId, status, createdAt]
+      properties:
+        id: { type: string }
+        instanceId: { type: string }
+        profileId: { type: string }
+        title: { type: string }
+        status: { enum: [creating, idle, running, waiting_for_input, interrupted, closed, failed] }
+        nativeSessionId: { type: string }
+        metadata: { type: object, additionalProperties: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    SessionPage:
+      type: object
+      required: [items]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Session' } }
+        nextCursor: { type: [string, 'null'] }
+    CreateSessionRequest:
+      type: object
+      properties:
+        title: { type: string }
+        resumeNativeSessionId: { type: string }
+        workingDirectory: { type: string }
+        environment: { type: object, additionalProperties: { type: string } }
+        metadata: { type: object, additionalProperties: true }
+        toolBindingIds: { type: array, items: { type: string } }
+    SessionAction:
+      oneOf:
+        - type: object
+          required: [type]
+          properties: { type: { enum: [resume, activate, close, interrupt, compress, undo] } }
+        - type: object
+          required: [type]
+          properties:
+            type: { const: branch }
+            fromTurnId: { type: string }
+    ContentPart:
+      oneOf:
+        - type: object
+          required: [type, text]
+          properties: { type: { const: text }, text: { type: string } }
+        - type: object
+          required: [type, url]
+          properties:
+            type: { enum: [image, file] }
+            url: { type: string, format: uri }
+            mediaType: { type: string }
+    SubmitTurnRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          oneOf:
+            - { type: string }
+            - { type: array, items: { $ref: '#/components/schemas/ContentPart' } }
+        mode: { enum: [enqueue, steer], default: enqueue }
+        toolBindingIds:
+          type: array
+          items: { type: string }
+          description: SDK-layer bindings activated before the prompt is submitted.
+        metadata: { type: object, additionalProperties: true }
+    Turn:
+      type: object
+      required: [id, sessionId, status, createdAt]
+      properties:
+        id: { type: string }
+        sessionId: { type: string }
+        status: { enum: [queued, running, waiting_for_approval, completed, stopped, failed] }
+        output: { type: array, items: { $ref: '#/components/schemas/ContentPart' } }
+        error: { oneOf: [{ $ref: '#/components/schemas/Problem' }, { type: 'null' }] }
+        createdAt: { type: string, format: date-time }
+        completedAt: { type: [string, 'null'], format: date-time }
+    TurnAction:
+      oneOf:
+        - type: object
+          required: [type]
+          properties: { type: { enum: [stop] } }
+        - type: object
+          required: [type, content]
+          properties: { type: { const: steer }, content: { type: string } }
+        - type: object
+          required: [type, requestId, decision]
+          properties:
+            type: { const: approval }
+            requestId: { type: string }
+            decision: { enum: [allow_once, allow_session, deny] }
+    RuntimeEvent:
+      type: object
+      required: [id, type, occurredAt, data]
+      properties:
+        id: { type: string }
+        type: { type: string }
+        occurredAt: { type: string, format: date-time }
+        nativeMethod: { type: string }
+        data: true
+    JsonRpcRequest:
+      type: object
+      required: [jsonrpc, method]
+      properties:
+        jsonrpc: { const: '2.0' }
+        id: { type: [string, integer, 'null'] }
+        method: { type: string }
+        params: { oneOf: [{ type: object, additionalProperties: true }, { type: array, items: true }] }
+    JsonRpcResponse:
+      type: object
+      required: [jsonrpc]
+      properties:
+        jsonrpc: { const: '2.0' }
+        id: { type: [string, integer, 'null'] }
+        result: true
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: integer }
+            message: { type: string }
+            data: true
+      oneOf:
+        - required: [result]
+        - required: [error]
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        traceId: { type: string }
+

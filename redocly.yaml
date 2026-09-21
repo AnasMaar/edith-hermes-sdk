@@ -1,0 +1,15 @@
+extends:
+  - recommended
+
+rules:
+  # CRUD operationIds already carry the same information; summaries remain optional by design.
+  operation-summary: off
+  # Licensing belongs to the eventual SDK repository, not these portable API documents.
+  info-license: off
+  tag-description: off
+  # A shared RFC 9457 default response covers all non-success responses.
+  operation-4xx-response: off
+  # Conditional required fields are defined on the containing schema in OpenAPI 3.1.
+  no-required-schema-properties-undefined: off
+  # RuntimeEvent documents the JSON value carried in an SSE data field.
+  no-unused-components: off

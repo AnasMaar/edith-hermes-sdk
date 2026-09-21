@@ -1,0 +1,151 @@
+version: 1
+updated: 2026-09-21
+
+upstream:
+  hermes_container:
+    kind: oci-image
+    image: nousresearch/hermes-agent
+    registry: https://hub.docker.com/r/nousresearch/hermes-agent
+    dockerfile: https://github.com/NousResearch/hermes-agent/blob/main/Dockerfile
+    documentation: https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/docker.md
+    platforms: [linux/amd64, linux/arm64]
+    mutable_home: /opt/data
+    runtime_uid: 10000
+    role: Official base image for container and Kubernetes instance runtimes.
+
+  hermes_gateway:
+    kind: openrpc
+    version: "1"
+    openrpc: 1.3.2
+    revision: 5470f260cac7bafc7b98676dfba1c12fcddc3234
+    url: https://raw.githubusercontent.com/NousResearch/hermes-agent/5470f260cac7bafc7b98676dfba1c12fcddc3234/apps/shared/src/gateway-contract.openrpc.json
+    snapshot: ./vendor/hermes/gateway-contract.openrpc.json
+    sha256: 00de4e14314d18909d36d73976552b8c53dc5106a34356d7cf2159c8177449e2
+    generated_from: tui_gateway/contracts
+    sdk_namespace: gateway
+    role: Canonical lossless Hermes Agent feature surface.
+    coverage:
+      methods: 219
+      server_requests: 12
+      notifications: 69
+      schemas: 624
+
+  nous_inference:
+    kind: openapi
+    version: 1.0.0
+    url: https://portal.nousresearch.com/api/openapi
+    snapshot: ./vendor/nous/inference.openapi.json
+    sha256: 645775176ce197be1cd63943dd41198ed4c3eec272e334e88c7bb809e8ccd6ac
+    sdk_namespace: inference
+    role: Direct hosted model inference.
+
+  hermes_agent_http:
+    kind: runtime-openapi
+    discovery: "{instance.apiBaseUrl}/openapi.json"
+    capabilities: "{instance.apiBaseUrl}/v1/capabilities"
+    sdk_namespace: agentHttp
+    role: OpenAI-compatible and resource-oriented HTTP surface of a running agent.
+
+  hermes_cloud:
+    kind: mcp
+    url: https://portal.nousresearch.com/mcp
+    sdk_namespace: cloud
+    role: Nous-hosted Hermes instance lifecycle management.
+
+sdk:
+  images:
+    kind: openapi
+    path: ./openapi/images.openapi.yaml
+    sdk_namespace: images
+  control_plane:
+    kind: openapi
+    path: ./openapi/control-plane.openapi.yaml
+    sdk_namespace: controlPlane
+  runtime:
+    kind: openapi
+    path: ./openapi/runtime.openapi.yaml
+    sdk_namespace: runtime
+  tools:
+    kind: openapi
+    path: ./openapi/tools.openapi.yaml
+    sdk_namespace: tools
+
+feature_ownership:
+  native_gateway:
+    source: hermes_gateway
+    domains:
+      - agents
+      - approvals
+      - billing
+      - browser
+      - clarifications
+      - commands
+      - configuration
+      - connectors
+      - cron
+      - delegation
+      - groups
+      - handoff
+      - learning
+      - mcp
+      - models
+      - plugins
+      - processes
+      - profiles
+      - projects
+      - prompts
+      - rollback
+      - sessions
+      - skills
+      - subagents
+      - subscriptions
+      - tools
+      - toolsets
+      - vault
+      - voice
+      - wake
+  orchestration:
+    source: control_plane
+    domains:
+      - instances
+      - instance_lifecycle
+      - pools
+      - leases
+      - kubernetes
+      - placement
+      - health
+      - connection_discovery
+      - per_user_provisioning
+  image_building:
+    source: images
+    domains:
+      - image_recipes
+      - isolated_builds
+      - image_scanning
+      - sbom
+      - provenance
+      - signing
+      - registry_publishing
+  normalized_runtime:
+    source: runtime
+    domains:
+      - targeted_sessions
+      - targeted_turns
+      - event_streams
+      - native_rpc_passthrough
+  dynamic_tools:
+    source: tools
+    domains:
+      - tool_bundles
+      - tool_bindings
+      - tool_execution
+      - managed_mcp_servers
+
+compatibility_rules:
+  - Never remove or rename an upstream Hermes method in the generated gateway namespace.
+  - Capability discovery is required before invoking an optional high-level operation.
+  - Unknown upstream methods remain callable through the native RPC operation.
+  - All stateful high-level operations must include instance and profile identity.
+  - Contract revisions must be recorded in generated SDK build metadata.
+  - Production Kubernetes instances must resolve their mutable image tag to an immutable digest.
+  - A pool replica is an addressable SDK instance and owns an isolated Hermes home volume.

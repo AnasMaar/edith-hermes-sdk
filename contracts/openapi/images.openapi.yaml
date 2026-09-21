@@ -1,0 +1,346 @@
+openapi: 3.1.0
+info:
+  title: Hermes SDK Image Builder API
+  version: 0.1.0
+  summary: Build, verify and publish Hermes runtime images programmatically.
+  description: |
+    Multi-tenant asynchronous image-build contract. Builds run in an isolated builder and produce
+    an immutable OCI digest, SBOM and provenance before an image may be used by the control plane.
+servers:
+  - url: https://{imageBuilderHost}
+    variables:
+      imageBuilderHost: { default: hermes-images.example.com }
+security:
+  - bearerAuth: []
+tags:
+  - name: Recipes
+  - name: Builds
+  - name: Images
+paths:
+  /v1/image-recipes:
+    get:
+      tags: [Recipes]
+      operationId: listImageRecipes
+      parameters:
+        - $ref: '#/components/parameters/OwnerId'
+      responses:
+        '200':
+          description: Image recipes visible to the caller.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImageRecipePage' }
+        default: { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Recipes]
+      operationId: createImageRecipe
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateImageRecipeRequest' }
+      responses:
+        '201':
+          description: Recipe created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImageRecipe' }
+        default: { $ref: '#/components/responses/Error' }
+  /v1/image-recipes/{recipeId}:
+    get:
+      tags: [Recipes]
+      operationId: getImageRecipe
+      parameters: [{ $ref: '#/components/parameters/RecipeId' }]
+      responses:
+        '200':
+          description: Image recipe.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImageRecipe' }
+        default: { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [Recipes]
+      operationId: deleteImageRecipe
+      parameters: [{ $ref: '#/components/parameters/RecipeId' }]
+      responses:
+        '204': { description: Recipe deleted. Existing images are unaffected. }
+        default: { $ref: '#/components/responses/Error' }
+  /v1/image-builds:
+    get:
+      tags: [Builds]
+      operationId: listImageBuilds
+      parameters:
+        - $ref: '#/components/parameters/OwnerId'
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/BuildStatus' }
+      responses:
+        '200':
+          description: Image builds.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImageBuildPage' }
+        default: { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Builds]
+      operationId: startImageBuild
+      summary: Start or deduplicate an asynchronous image build.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StartImageBuildRequest' }
+      responses:
+        '202':
+          description: Build accepted. An identical recipe may return an existing verified image.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImageBuild' }
+        default: { $ref: '#/components/responses/Error' }
+  /v1/image-builds/{buildId}:
+    get:
+      tags: [Builds]
+      operationId: getImageBuild
+      parameters: [{ $ref: '#/components/parameters/BuildId' }]
+      responses:
+        '200':
+          description: Current build state.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImageBuild' }
+        default: { $ref: '#/components/responses/Error' }
+  /v1/image-builds/{buildId}/actions/cancel:
+    post:
+      tags: [Builds]
+      operationId: cancelImageBuild
+      parameters: [{ $ref: '#/components/parameters/BuildId' }]
+      responses:
+        '202': { description: Cancellation requested. }
+        default: { $ref: '#/components/responses/Error' }
+  /v1/image-builds/{buildId}/logs:
+    get:
+      tags: [Builds]
+      operationId: streamImageBuildLogs
+      parameters:
+        - $ref: '#/components/parameters/BuildId'
+        - name: after
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Redacted build log as server-sent events.
+          content:
+            text/event-stream:
+              schema: { type: string }
+        default: { $ref: '#/components/responses/Error' }
+  /v1/images:
+    get:
+      tags: [Images]
+      operationId: listManagedImages
+      parameters:
+        - $ref: '#/components/parameters/OwnerId'
+        - name: usable
+          in: query
+          schema: { type: boolean }
+      responses:
+        '200':
+          description: Built image artifacts.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ManagedImagePage' }
+        default: { $ref: '#/components/responses/Error' }
+  /v1/images/{imageId}:
+    get:
+      tags: [Images]
+      operationId: getManagedImage
+      parameters: [{ $ref: '#/components/parameters/ImageId' }]
+      responses:
+        '200':
+          description: Immutable image artifact and verification results.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ManagedImage' }
+        default: { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [Images]
+      operationId: deleteManagedImage
+      summary: Schedule image deletion after active instance references reach zero.
+      parameters: [{ $ref: '#/components/parameters/ImageId' }]
+      responses:
+        '202': { description: Garbage collection scheduled. }
+        default: { $ref: '#/components/responses/Error' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    RecipeId: { name: recipeId, in: path, required: true, schema: { type: string } }
+    BuildId: { name: buildId, in: path, required: true, schema: { type: string } }
+    ImageId: { name: imageId, in: path, required: true, schema: { type: string } }
+    OwnerId: { name: ownerId, in: query, schema: { type: string } }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, minLength: 8, maxLength: 255 }
+  responses:
+    Error:
+      description: Request failed.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    OwnerReference:
+      type: object
+      required: [tenantId, subjectId]
+      properties:
+        tenantId: { type: string }
+        subjectId: { type: string, description: "User, service account or workload identity." }
+    PackageSpec:
+      type: object
+      properties:
+        apt: { type: array, items: { type: string } }
+        python: { type: array, items: { type: string } }
+        node: { type: array, items: { type: string } }
+    ArtifactMount:
+      type: object
+      required: [artifactId, destination]
+      properties:
+        artifactId: { type: string }
+        destination: { type: string, pattern: '^/opt/hermes-extension/' }
+        checksum: { type: string }
+        mode: { type: string, pattern: '^[0-7]{4}$' }
+    CreateImageRecipeRequest:
+      type: object
+      required: [owner, name, baseImage]
+      properties:
+        owner: { $ref: '#/components/schemas/OwnerReference' }
+        name: { type: string }
+        baseImage:
+          type: string
+          description: OCI reference. Production policy requires a digest-pinned official Hermes base.
+          examples: ["nousresearch/hermes-agent@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"]
+        platforms:
+          type: array
+          items: { enum: [linux/amd64, linux/arm64] }
+          default: [linux/amd64]
+        packages: { $ref: '#/components/schemas/PackageSpec' }
+        artifacts: { type: array, items: { $ref: '#/components/schemas/ArtifactMount' } }
+        labels: { type: object, additionalProperties: { type: string } }
+        buildArguments:
+          type: object
+          additionalProperties: { type: string }
+          description: Non-secret build arguments only.
+        runtime:
+          type: object
+          properties:
+            user: { type: string, default: "10000:10000" }
+            command: { type: array, items: { type: string } }
+            exposedPorts: { type: array, items: { type: integer } }
+    ImageRecipe:
+      allOf:
+        - $ref: '#/components/schemas/CreateImageRecipeRequest'
+        - type: object
+          required: [id, recipeDigest, createdAt]
+          properties:
+            id: { type: string }
+            recipeDigest: { type: string }
+            createdAt: { type: string, format: date-time }
+    ImageRecipePage:
+      type: object
+      required: [items]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/ImageRecipe' } }
+        nextCursor: { type: [string, 'null'] }
+    StartImageBuildRequest:
+      type: object
+      required: [owner, source, destination]
+      properties:
+        owner: { $ref: '#/components/schemas/OwnerReference' }
+        source:
+          oneOf:
+            - type: object
+              required: [recipeId]
+              additionalProperties: false
+              properties: { recipeId: { type: string } }
+            - type: object
+              required: [recipe]
+              additionalProperties: false
+              properties: { recipe: { $ref: '#/components/schemas/CreateImageRecipeRequest' } }
+        destination:
+          type: object
+          required: [repository]
+          properties:
+            repository: { type: string }
+            tags: { type: array, items: { type: string } }
+            registryCredentialRef: { type: string }
+        buildSecretRefs:
+          type: array
+          items: { type: string }
+          description: Ephemeral BuildKit-style secret mounts; never build arguments or image layers.
+        cachePolicy: { enum: [use, refresh, disabled], default: use }
+        verificationPolicy: { enum: [required, warn, disabled], default: required }
+    BuildStatus:
+      enum: [queued, resolving, building, scanning, signing, publishing, succeeded, failed, cancelled]
+    ImageBuild:
+      type: object
+      required: [id, owner, status, createdAt]
+      properties:
+        id: { type: string }
+        owner: { $ref: '#/components/schemas/OwnerReference' }
+        status: { $ref: '#/components/schemas/BuildStatus' }
+        recipeDigest: { type: string }
+        imageId: { type: string }
+        progress: { type: integer, minimum: 0, maximum: 100 }
+        error: { oneOf: [{ $ref: '#/components/schemas/Problem' }, { type: 'null' }] }
+        createdAt: { type: string, format: date-time }
+        completedAt: { type: [string, 'null'], format: date-time }
+    ImageBuildPage:
+      type: object
+      required: [items]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/ImageBuild' } }
+        nextCursor: { type: [string, 'null'] }
+    VerificationResult:
+      type: object
+      required: [status]
+      properties:
+        status: { enum: [pending, passed, warned, failed] }
+        scanner: { type: string }
+        criticalVulnerabilities: { type: integer, minimum: 0 }
+        highVulnerabilities: { type: integer, minimum: 0 }
+        policyViolations: { type: array, items: { type: string } }
+    ManagedImage:
+      type: object
+      required: [id, owner, repository, digest, platforms, verification, createdAt]
+      properties:
+        id: { type: string }
+        owner: { $ref: '#/components/schemas/OwnerReference' }
+        repository: { type: string }
+        digest: { type: string, pattern: '^sha256:[a-f0-9]{64}$' }
+        immutableReference: { type: string }
+        platforms: { type: array, items: { type: string } }
+        recipeDigest: { type: string }
+        sbomUrl: { type: string, format: uri }
+        provenanceUrl: { type: string, format: uri }
+        signatureBundleUrl: { type: string, format: uri }
+        verification: { $ref: '#/components/schemas/VerificationResult' }
+        activeInstanceReferences: { type: integer, minimum: 0 }
+        createdAt: { type: string, format: date-time }
+    ManagedImagePage:
+      type: object
+      required: [items]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/ManagedImage' } }
+        nextCursor: { type: [string, 'null'] }
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        traceId: { type: string }

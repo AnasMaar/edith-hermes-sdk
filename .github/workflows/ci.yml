@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python }}
+          enable-cache: true
+      - run: uv sync --frozen --group dev
+      - run: uv run pytest
+
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+          enable-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: uv sync --frozen --group dev
+      - run: uv run ruff check .
+      - run: uv run mypy src/edith_hermes
+      - run: uv run python scripts/validate_contracts.py
+      - run: npx --yes @redocly/cli@latest lint "contracts/openapi/*.yaml"
+      - name: Verify generated SDK is committed
+        run: |
+          uv run python scripts/generate_sdk.py
+          git diff --exit-code
+      - run: uv build
+
+  mock-container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/mock_server/Dockerfile
+          push: false
+          tags: edith-hermes-mock:ci
+

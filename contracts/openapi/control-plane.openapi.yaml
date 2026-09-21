@@ -1,0 +1,857 @@
+openapi: 3.1.0
+info:
+  title: Hermes SDK Control Plane API
+  version: 0.1.0
+  summary: Provision and address Hermes instances, profiles and pools.
+  description: |
+    SDK-owned orchestration contract. It complements, rather than replaces, the upstream Hermes
+    gateway OpenRPC contract. All resources are tenant-scoped by the implementation's security
+    principal.
+servers:
+  - url: https://{controlPlaneHost}
+    variables:
+      controlPlaneHost:
+        default: hermes-control.example.com
+security:
+  - bearerAuth: []
+tags:
+  - name: Instances
+  - name: Provisioning
+  - name: Profiles
+  - name: Pools
+  - name: Leases
+
+paths:
+  /v1/instances:
+    get:
+      tags: [Instances]
+      operationId: listInstances
+      parameters:
+        - $ref: '#/components/parameters/PageCursor'
+        - $ref: '#/components/parameters/PageLimit'
+        - name: ownerId
+          in: query
+          schema: { type: string }
+        - name: poolId
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/InstanceStatus' }
+      responses:
+        '200':
+          description: Instances visible to the caller.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InstancePage' }
+        default: { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Instances]
+      operationId: createInstance
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateInstanceRequest' }
+      responses:
+        '202':
+          description: Provisioning accepted.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InstanceOperation' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /v1/instances/{instanceId}:
+    parameters:
+      - $ref: '#/components/parameters/InstanceId'
+    get:
+      tags: [Instances]
+      operationId: getInstance
+      responses:
+        '200':
+          description: Current instance state.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Instance' }
+        default: { $ref: '#/components/responses/Error' }
+    patch:
+      tags: [Instances]
+      operationId: updateInstance
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema: { $ref: '#/components/schemas/UpdateInstanceRequest' }
+      responses:
+        '200':
+          description: Updated instance.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Instance' }
+        default: { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [Instances]
+      operationId: deleteInstance
+      parameters:
+        - name: retainData
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '202':
+          description: Deletion accepted.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InstanceOperation' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /v1/instances/{instanceId}/actions/{action}:
+    parameters:
+      - $ref: '#/components/parameters/InstanceId'
+      - name: action
+        in: path
+        required: true
+        schema:
+          type: string
+          enum: [start, stop, restart, reconcile]
+    post:
+      tags: [Instances]
+      operationId: changeInstanceState
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Lifecycle operation accepted.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InstanceOperation' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /v1/instances/{instanceId}/connection:
+    parameters:
+      - $ref: '#/components/parameters/InstanceId'
+    get:
+      tags: [Instances]
+      operationId: getInstanceConnection
+      responses:
+        '200':
+          description: Short-lived connection material for an instance.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConnectionDescriptor' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /v1/instances/{instanceId}/capabilities:
+    parameters:
+      - $ref: '#/components/parameters/InstanceId'
+    get:
+      tags: [Instances]
+      operationId: getInstanceCapabilities
+      responses:
+        '200':
+          description: Negotiated SDK and upstream Hermes capabilities.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CapabilityDocument' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /v1/instances/{instanceId}/profiles:
+    parameters:
+      - $ref: '#/components/parameters/InstanceId'
+    get:
+      tags: [Profiles]
+      operationId: listProfiles
+      responses:
+        '200':
+          description: Profiles on the selected instance.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Profile' }
+        default: { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Profiles]
+      operationId: createProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateProfileRequest' }
+      responses:
+        '201':
+          description: Created profile.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /v1/instances/{instanceId}/profiles/{profileId}:
+    parameters:
+      - $ref: '#/components/parameters/InstanceId'
+      - $ref: '#/components/parameters/ProfileId'
+    get:
+      tags: [Profiles]
+      operationId: getProfile
+      responses:
+        '200':
+          description: Selected profile.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+        default: { $ref: '#/components/responses/Error' }
+    patch:
+      tags: [Profiles]
+      operationId: updateProfile
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema: { $ref: '#/components/schemas/UpdateProfileRequest' }
+      responses:
+        '200':
+          description: Updated profile.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+        default: { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [Profiles]
+      operationId: deleteProfile
+      responses:
+        '204': { description: Profile deleted. }
+        default: { $ref: '#/components/responses/Error' }
+
+  /v1/pools:
+    get:
+      tags: [Pools]
+      operationId: listPools
+      responses:
+        '200':
+          description: Instance pools.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/InstancePool' }
+        default: { $ref: '#/components/responses/Error' }
+    post:
+      tags: [Pools]
+      operationId: createPool
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePoolRequest' }
+      responses:
+        '201':
+          description: Created pool.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InstancePool' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /v1/pools/{poolId}:
+    parameters:
+      - $ref: '#/components/parameters/PoolId'
+    get:
+      tags: [Pools]
+      operationId: getPool
+      responses:
+        '200':
+          description: Selected pool.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InstancePool' }
+        default: { $ref: '#/components/responses/Error' }
+    patch:
+      tags: [Pools]
+      operationId: updatePool
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema: { $ref: '#/components/schemas/UpdatePoolRequest' }
+      responses:
+        '200':
+          description: Updated pool.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InstancePool' }
+        default: { $ref: '#/components/responses/Error' }
+    delete:
+      tags: [Pools]
+      operationId: deletePool
+      responses:
+        '202': { description: Pool deletion accepted. }
+        default: { $ref: '#/components/responses/Error' }
+
+  /v1/pools/{poolId}/leases:
+    parameters:
+      - $ref: '#/components/parameters/PoolId'
+    post:
+      tags: [Leases]
+      operationId: acquireInstanceLease
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AcquireLeaseRequest' }
+      responses:
+        '201':
+          description: Instance allocated from the pool.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InstanceLease' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /v1/pools/{poolId}/leases/{leaseId}:
+    parameters:
+      - $ref: '#/components/parameters/PoolId'
+      - $ref: '#/components/parameters/LeaseId'
+    delete:
+      tags: [Leases]
+      operationId: releaseInstanceLease
+      responses:
+        '204': { description: Lease released. }
+        default: { $ref: '#/components/responses/Error' }
+
+  /v1/provisioning-jobs:
+    post:
+      tags: [Provisioning]
+      operationId: provisionUserInstance
+      summary: Build or reuse an image and create a user-owned Hermes instance.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProvisionUserInstanceRequest' }
+      responses:
+        '202':
+          description: Provisioning workflow accepted.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProvisioningJob' }
+        default: { $ref: '#/components/responses/Error' }
+
+  /v1/provisioning-jobs/{jobId}:
+    get:
+      tags: [Provisioning]
+      operationId: getProvisioningJob
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Build, launch and bootstrap progress.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProvisioningJob' }
+        default: { $ref: '#/components/responses/Error' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    InstanceId:
+      name: instanceId
+      in: path
+      required: true
+      schema: { type: string, minLength: 1 }
+    ProfileId:
+      name: profileId
+      in: path
+      required: true
+      schema: { type: string, minLength: 1 }
+    PoolId:
+      name: poolId
+      in: path
+      required: true
+      schema: { type: string, minLength: 1 }
+    LeaseId:
+      name: leaseId
+      in: path
+      required: true
+      schema: { type: string, minLength: 1 }
+    PageCursor:
+      name: cursor
+      in: query
+      schema: { type: string }
+    PageLimit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, minLength: 8, maxLength: 255 }
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      schema: { type: string }
+  responses:
+    Error:
+      description: Error response.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer, minimum: 100, maximum: 599 }
+        detail: { type: string }
+        instance: { type: string, format: uri-reference }
+        code: { type: string }
+        retryable: { type: boolean, default: false }
+    RuntimeKind:
+      type: string
+      enum: [external, process, container, kubernetes, nous_cloud]
+    InstanceStatus:
+      type: string
+      enum: [pending, provisioning, starting, ready, draining, stopped, degraded, failed, deleting]
+    DesiredState:
+      type: string
+      enum: [running, stopped, deleted]
+    ResourceQuantity:
+      oneOf:
+        - { type: string }
+        - { type: number }
+    ResourceRequirements:
+      type: object
+      properties:
+        cpu: { $ref: '#/components/schemas/ResourceQuantity' }
+        memory: { $ref: '#/components/schemas/ResourceQuantity' }
+        gpu: { type: integer, minimum: 0 }
+        ephemeralStorage: { $ref: '#/components/schemas/ResourceQuantity' }
+    SecretReference:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        key: { type: string }
+        version: { type: string }
+    EnvironmentValue:
+      oneOf:
+        - type: object
+          required: [value]
+          properties:
+            value: { type: string }
+        - type: object
+          required: [secretRef]
+          properties:
+            secretRef: { $ref: '#/components/schemas/SecretReference' }
+    VolumeMount:
+      type: object
+      required: [name, mountPath]
+      properties:
+        name: { type: string }
+        mountPath: { type: string }
+        readOnly: { type: boolean, default: false }
+        source:
+          type: object
+          properties:
+            persistentVolumeClaim: { type: string }
+            hostPath: { type: string }
+            emptyDir: { type: boolean }
+    KubernetesPlacement:
+      type: object
+      properties:
+        context: { type: string }
+        namespace: { type: string, default: default }
+        serviceAccountName: { type: string }
+        nodeSelector:
+          type: object
+          additionalProperties: { type: string }
+        tolerations:
+          type: array
+          items: { type: object, additionalProperties: true }
+        affinity: { type: object, additionalProperties: true }
+        podTemplateMetadata:
+          type: object
+          additionalProperties: true
+        imagePullPolicy: { type: string, enum: [Always, IfNotPresent, Never], default: IfNotPresent }
+        imagePullSecrets:
+          type: array
+          items: { type: string }
+        storageClassName: { type: string }
+        persistentVolumeSize: { $ref: '#/components/schemas/ResourceQuantity' }
+    RuntimeSpec:
+      type: object
+      required: [kind]
+      properties:
+        kind: { $ref: '#/components/schemas/RuntimeKind' }
+        image: { type: string }
+        managedImageId:
+          type: string
+          description: Image artifact created by the Hermes SDK Image Builder API.
+        imageDigest:
+          type: string
+          pattern: '^sha256:[a-f0-9]{64}$'
+          description: Digest resolved by the control plane; required in production policy.
+        executable: { type: string, default: hermes }
+        command:
+          type: array
+          items: { type: string }
+        hermesHome: { type: string }
+        endpoint: { type: string, format: uri }
+        resources: { $ref: '#/components/schemas/ResourceRequirements' }
+        environment:
+          type: object
+          additionalProperties: { $ref: '#/components/schemas/EnvironmentValue' }
+        volumes:
+          type: array
+          items: { $ref: '#/components/schemas/VolumeMount' }
+        kubernetes: { $ref: '#/components/schemas/KubernetesPlacement' }
+        cloud:
+          type: object
+          additionalProperties: true
+    BootstrapSpec:
+      type: object
+      properties:
+        profile: { $ref: '#/components/schemas/CreateProfileRequest' }
+        mcpServers:
+          type: array
+          items: { type: string }
+        toolBundles:
+          type: array
+          items: { type: string }
+        config:
+          type: object
+          additionalProperties: true
+    CreateInstanceRequest:
+      type: object
+      required: [owner, name, runtime]
+      properties:
+        owner: { $ref: '#/components/schemas/OwnerReference' }
+        name: { type: string, minLength: 1, maxLength: 128 }
+        runtime: { $ref: '#/components/schemas/RuntimeSpec' }
+        poolId: { type: string }
+        labels:
+          type: object
+          additionalProperties: { type: string }
+        bootstrap: { $ref: '#/components/schemas/BootstrapSpec' }
+    UpdateInstanceRequest:
+      type: object
+      properties:
+        name: { type: string }
+        desiredState: { $ref: '#/components/schemas/DesiredState' }
+        labels:
+          type: object
+          additionalProperties: { type: string }
+        runtime: { $ref: '#/components/schemas/RuntimeSpec' }
+    Instance:
+      type: object
+      required: [id, owner, name, runtime, status, desiredState, revision, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        owner: { $ref: '#/components/schemas/OwnerReference' }
+        name: { type: string }
+        runtime: { $ref: '#/components/schemas/RuntimeSpec' }
+        status: { $ref: '#/components/schemas/InstanceStatus' }
+        desiredState: { $ref: '#/components/schemas/DesiredState' }
+        poolId: { type: [string, 'null'] }
+        labels:
+          type: object
+          additionalProperties: { type: string }
+        health:
+          type: object
+          properties:
+            ready: { type: boolean }
+            reason: { type: string }
+            checkedAt: { type: string, format: date-time }
+        runtimeIdentity: { $ref: '#/components/schemas/RuntimeIdentity' }
+        revision: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    RuntimeIdentity:
+      type: object
+      description: Provider identity that makes a logical instance traceable to one physical runtime.
+      properties:
+        provider: { type: string, enum: [external, process, docker, kubernetes, nous_cloud] }
+        cluster: { type: string }
+        namespace: { type: string }
+        workloadKind: { type: string, enum: [StatefulSet, Deployment, Pod, Job] }
+        workloadName: { type: string }
+        podName: { type: string }
+        podUid: { type: string }
+        ordinal: { type: integer, minimum: 0 }
+        serviceDnsName: { type: string }
+        image: { type: string }
+        imageDigest: { type: string }
+    OwnerReference:
+      type: object
+      required: [tenantId, subjectId]
+      properties:
+        tenantId: { type: string }
+        subjectId: { type: string, description: "User, service account or workload identity." }
+    InstancePage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Instance' }
+        nextCursor: { type: [string, 'null'] }
+    OperationStatus:
+      type: string
+      enum: [queued, running, succeeded, failed, cancelled]
+    InstanceOperation:
+      type: object
+      required: [id, instanceId, action, status, createdAt]
+      properties:
+        id: { type: string }
+        instanceId: { type: string }
+        action: { type: string }
+        status: { $ref: '#/components/schemas/OperationStatus' }
+        error: { oneOf: [{ $ref: '#/components/schemas/Problem' }, { type: 'null' }] }
+        createdAt: { type: string, format: date-time }
+        completedAt: { type: [string, 'null'], format: date-time }
+    ConnectionDescriptor:
+      type: object
+      required: [instanceId, transports, expiresAt]
+      properties:
+        instanceId: { type: string }
+        transports:
+          type: array
+          items:
+            type: object
+            required: [kind]
+            properties:
+              kind: { type: string, enum: [websocket, stdio, http, sse] }
+              url: { type: string, format: uri }
+              command:
+                type: array
+                items: { type: string }
+              protocols:
+                type: array
+                items: { type: string }
+        authorization:
+          type: object
+          properties:
+            scheme: { type: string, enum: [bearer, websocket_ticket, process_stdio, none] }
+            token: { type: string, writeOnly: true }
+        expiresAt: { type: string, format: date-time }
+    CapabilityDocument:
+      type: object
+      required: [instanceId, contracts, domains]
+      properties:
+        instanceId: { type: string }
+        hermesVersion: { type: string }
+        contracts:
+          type: array
+          items:
+            type: object
+            required: [kind, version]
+            properties:
+              kind: { type: string, enum: [openrpc, openapi, mcp, acp] }
+              version: { type: string }
+              url: { type: string, format: uri-reference }
+              revision: { type: string }
+        domains:
+          type: object
+          additionalProperties: { type: boolean }
+        nativeMethods:
+          type: array
+          items: { type: string }
+    CreateProfileRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9._-]*$' }
+        description: { type: string }
+        cloneFrom: { type: string }
+        cloneAll: { type: boolean, default: false }
+        cloneChannels: { type: boolean, default: false }
+        includeSkills: { type: boolean, default: true }
+        soul: { type: string }
+        model: { type: string }
+        provider: { type: string }
+        mirrorCredentials: { type: boolean, default: true }
+        config:
+          type: object
+          additionalProperties: true
+    UpdateProfileRequest:
+      type: object
+      properties:
+        description: { type: string }
+        soul: { type: string }
+        model: { type: string }
+        provider: { type: string }
+        config:
+          type: object
+          additionalProperties: true
+    Profile:
+      type: object
+      required: [id, instanceId, name, path, createdAt]
+      properties:
+        id: { type: string }
+        instanceId: { type: string }
+        name: { type: string }
+        description: { type: string }
+        path: { type: string }
+        model: { type: string }
+        provider: { type: string }
+        status: { type: string, enum: [ready, degraded, disabled] }
+        createdAt: { type: string, format: date-time }
+    SchedulingStrategy:
+      type: string
+      enum: [round_robin, least_sessions, least_busy, random, sticky_key, custom]
+    InstanceTemplate:
+      type: object
+      required: [runtime]
+      properties:
+        runtime: { $ref: '#/components/schemas/RuntimeSpec' }
+        bootstrap: { $ref: '#/components/schemas/BootstrapSpec' }
+        labels:
+          type: object
+          additionalProperties: { type: string }
+    CreatePoolRequest:
+      type: object
+      required: [name, template]
+      properties:
+        name: { type: string }
+        template: { $ref: '#/components/schemas/InstanceTemplate' }
+        minimumSize: { type: integer, minimum: 0, default: 0 }
+        maximumSize: { type: integer, minimum: 1 }
+        desiredSize: { type: integer, minimum: 0 }
+        strategy: { $ref: '#/components/schemas/SchedulingStrategy' }
+        idleTtlSeconds: { type: integer, minimum: 0 }
+        kubernetes: { $ref: '#/components/schemas/KubernetesPoolSpec' }
+    KubernetesPoolSpec:
+      type: object
+      description: Maps a homogeneous SDK pool onto a Kubernetes StatefulSet.
+      required: [workloadName, namespace]
+      properties:
+        workloadName: { type: string }
+        namespace: { type: string }
+        controller: { type: string, const: StatefulSet }
+        headlessServiceName: { type: string }
+        volumeClaimTemplateName: { type: string, default: data }
+        replicaOwnership:
+          type: string
+          const: sdk_control_plane
+          description: The SDK reconciler is the sole writer of StatefulSet.spec.replicas.
+    UpdatePoolRequest:
+      type: object
+      properties:
+        minimumSize: { type: integer, minimum: 0 }
+        maximumSize: { type: integer, minimum: 1 }
+        desiredSize: { type: integer, minimum: 0 }
+        strategy: { $ref: '#/components/schemas/SchedulingStrategy' }
+        idleTtlSeconds: { type: integer, minimum: 0 }
+    InstancePool:
+      allOf:
+        - $ref: '#/components/schemas/CreatePoolRequest'
+        - type: object
+          required: [id, status, currentSize, readySize, createdAt]
+          properties:
+            id: { type: string }
+            status: { type: string, enum: [reconciling, ready, degraded, failed] }
+            currentSize: { type: integer, minimum: 0 }
+            readySize: { type: integer, minimum: 0 }
+            createdAt: { type: string, format: date-time }
+    AcquireLeaseRequest:
+      type: object
+      properties:
+        stickyKey: { type: string }
+        ttlSeconds: { type: integer, minimum: 1, default: 900 }
+        requiredLabels:
+          type: object
+          additionalProperties: { type: string }
+        profile:
+          oneOf:
+            - type: object
+              required: [profileId]
+              properties:
+                profileId: { type: string }
+            - $ref: '#/components/schemas/CreateProfileRequest'
+    InstanceLease:
+      type: object
+      required: [id, poolId, instanceId, connection, expiresAt]
+      properties:
+        id: { type: string }
+        poolId: { type: string }
+        instanceId: { type: string }
+        profileId: { type: string }
+        connection: { $ref: '#/components/schemas/ConnectionDescriptor' }
+        expiresAt: { type: string, format: date-time }
+    ProvisionUserInstanceRequest:
+      type: object
+      required: [owner, name, image, runtime]
+      properties:
+        owner: { $ref: '#/components/schemas/OwnerReference' }
+        name: { type: string }
+        image:
+          oneOf:
+            - type: object
+              required: [managedImageId]
+              additionalProperties: false
+              properties:
+                managedImageId: { type: string }
+            - type: object
+              required: [build]
+              additionalProperties: false
+              properties:
+                build:
+                  type: object
+                  required: [recipe, repository]
+                  properties:
+                    recipe:
+                      $ref: './images.openapi.yaml#/components/schemas/CreateImageRecipeRequest'
+                    repository: { type: string }
+                    registryCredentialRef: { type: string }
+                    reuseMatchingImage: { type: boolean, default: true }
+        runtime:
+          type: object
+          required: [kind]
+          properties:
+            kind: { type: string, enum: [container, kubernetes, nous_cloud] }
+            poolId: { type: string }
+            resources: { $ref: '#/components/schemas/ResourceRequirements' }
+            kubernetes: { $ref: '#/components/schemas/KubernetesPlacement' }
+        bootstrap: { $ref: '#/components/schemas/BootstrapSpec' }
+        labels: { type: object, additionalProperties: { type: string } }
+    ProvisioningPhase:
+      type: string
+      enum: [queued, resolving_image, building_image, verifying_image, creating_instance, waiting_for_runtime, bootstrapping_profile, ready, failed, cancelled]
+    ProvisioningJob:
+      type: object
+      required: [id, owner, phase, createdAt]
+      properties:
+        id: { type: string }
+        owner: { $ref: '#/components/schemas/OwnerReference' }
+        phase: { $ref: '#/components/schemas/ProvisioningPhase' }
+        imageBuildId: { type: string }
+        managedImageId: { type: string }
+        instanceId: { type: string }
+        profileId: { type: string }
+        connection: { $ref: '#/components/schemas/ConnectionDescriptor' }
+        error: { oneOf: [{ $ref: '#/components/schemas/Problem' }, { type: 'null' }] }
+        createdAt: { type: string, format: date-time }
+        completedAt: { type: [string, 'null'], format: date-time }
