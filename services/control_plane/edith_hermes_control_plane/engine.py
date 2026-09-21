@@ -327,7 +327,7 @@ class ProductionEngine:
             instance = await self._instance(arguments["instanceId"], identity)
             return 200, {
                 "instanceId": instance["id"],
-                "facadeVersion": "0.3.0",
+                "facadeVersion": "0.3.1",
                 "upstreamContract": "gateway-contract.openrpc.json",
                 "transports": ["http", "sse", "json_rpc", "websocket"],
                 "nativeMethods": list(HERMES_RPC_METHODS),

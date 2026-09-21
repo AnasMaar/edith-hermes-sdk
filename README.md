@@ -53,6 +53,11 @@ async with await AsyncEdithHermes.local(settings=settings) as sdk:
 
 See [`docs/configuration.md`](docs/configuration.md) for all provider combinations.
 
+For a complete local demonstration, run
+[`examples/docker_two_profiles.py`](examples/docker_two_profiles.py). It creates one real Hermes
+container, isolated `Adam` and `Anas` profiles, separate sessions, and profile-scoped callback tool
+bundles, then executes one tool from each bundle.
+
 Start the persistent mock server with:
 
 ```bash

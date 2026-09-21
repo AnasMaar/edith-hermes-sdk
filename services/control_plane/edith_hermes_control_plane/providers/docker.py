@@ -111,6 +111,8 @@ class DockerProvider:
             "ports": {f"{self.settings.gateway_port}/tcp": ("127.0.0.1", None)},
             "volumes": self._volumes(instance_id, runtime),
             "restart_policy": {"Name": "unless-stopped"},
+            "extra_hosts": runtime.get("extraHosts")
+            or {"host.docker.internal": "host-gateway"},
         }
         if resources.get("memory"):
             kwargs["mem_limit"] = str(resources["memory"])

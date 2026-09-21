@@ -39,7 +39,7 @@ async def _connect() -> Any:
     return websocket
 
 
-app = FastAPI(title="EDITH Hermes Runtime Bridge", version="0.3.0")
+app = FastAPI(title="EDITH Hermes Runtime Bridge", version="0.3.1")
 
 
 @app.get("/health")

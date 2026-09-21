@@ -91,7 +91,7 @@ def create_app(
 
     app = FastAPI(
         title="EDITH Hermes Production Control Plane",
-        version="0.3.0",
+        version="0.3.1",
         lifespan=lifespan,
     )
     app.state.database = database
@@ -101,7 +101,7 @@ def create_app(
 
     @app.get("/health/live")
     async def live() -> dict[str, Any]:
-        return {"ok": True, "version": "0.3.0"}
+        return {"ok": True, "version": "0.3.1"}
 
     @app.get("/health/ready")
     async def ready() -> dict[str, Any]:
@@ -356,7 +356,7 @@ def create_app(
             result = {
                 "protocolVersion": "2025-06-18",
                 "capabilities": {"tools": {"listChanged": False}},
-                "serverInfo": {"name": "edith-hermes-tool-bridge", "version": "0.3.0"},
+                "serverInfo": {"name": "edith-hermes-tool-bridge", "version": "0.3.1"},
             }
         elif method == "tools/list":
             result = {"tools": bundle.get("tools") or []}

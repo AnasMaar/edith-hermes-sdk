@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Hermes SDK Control Plane API
-  version: 0.3.0
+  version: 0.3.1
   summary: Provision and address Hermes instances, profiles and pools.
   description: |
     SDK-owned orchestration contract. It complements, rather than replaces, the upstream Hermes
@@ -573,6 +573,10 @@ components:
           type: boolean
           default: false
           description: Skip the provider's initial port/readiness wait; intended for custom supervisors and tests.
+        extraHosts:
+          type: object
+          description: Extra hostname mappings for Docker-compatible container runtimes.
+          additionalProperties: { type: string }
         kubernetes: { $ref: '#/components/schemas/KubernetesPlacement' }
         cloud:
           type: object
@@ -900,6 +904,9 @@ components:
               type: array
               items: { $ref: '#/components/schemas/VolumeMount' }
             skipReadinessCheck: { type: boolean, default: false }
+            extraHosts:
+              type: object
+              additionalProperties: { type: string }
             poolId: { type: string }
             resources: { $ref: '#/components/schemas/ResourceRequirements' }
             kubernetes: { $ref: '#/components/schemas/KubernetesPlacement' }

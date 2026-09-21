@@ -54,7 +54,7 @@ class Settings:
     kubernetes_context: str = ""
     runtime_namespace: str = "hermes-runtimes"
     runtime_service_account: str = "hermes-runtime"
-    runtime_bridge_image: str = "ghcr.io/anasmaar/edith-hermes-runtime-bridge:v0.3.0"
+    runtime_bridge_image: str = "ghcr.io/anasmaar/edith-hermes-runtime-bridge:v0.3.1"
     image_pull_secrets: list[str] = field(default_factory=list)
     default_storage_size: str = "5Gi"
     default_storage_class: str = ""
