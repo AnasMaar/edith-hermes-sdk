@@ -50,7 +50,7 @@ async def test_runtime_bridge_round_trips_native_json_rpc(monkeypatch: Any) -> N
         port = server.sockets[0].getsockname()[1]
         monkeypatch.setenv("HERMES_GATEWAY_URL", f"ws://127.0.0.1:{port}/api/ws")
         monkeypatch.setenv("HERMES_SESSION_TOKEN", "test-token")
-        async with httpx.AsyncClient(
+        async with app.router.lifespan_context(app), httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://bridge"
         ) as client:
             response = await client.post(

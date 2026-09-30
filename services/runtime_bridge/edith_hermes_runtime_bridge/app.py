@@ -7,13 +7,15 @@ import json
 import os
 import secrets
 from collections.abc import AsyncIterator
-from contextlib import suppress
-from typing import Any, cast
+from contextlib import asynccontextmanager, suppress
+from typing import Any
 from urllib.parse import quote, urlsplit, urlunsplit
 
 import websockets
 from fastapi import FastAPI, HTTPException, Request, WebSocket
 from fastapi.responses import StreamingResponse
+
+from edith_hermes_rpc import RPCPool
 
 
 def _gateway_url() -> str:
@@ -34,14 +36,27 @@ async def _connect() -> Any:
         ping_timeout=20,
         max_size=16 * 1024 * 1024,
     )
-    first = json.loads(await asyncio.wait_for(websocket.recv(), timeout=10))
-    if first.get("method") != "event" or first.get("params", {}).get("type") != "gateway.ready":
-        await websocket.close()
-        raise RuntimeError("Hermes gateway did not emit gateway.ready")
+    try:
+        first = json.loads(await asyncio.wait_for(websocket.recv(), timeout=10))
+        if first.get("method") != "event" or first.get("params", {}).get("type") != "gateway.ready":
+            raise RuntimeError("Hermes gateway did not emit gateway.ready")
+    except BaseException:
+        with suppress(Exception):
+            await websocket.close()
+        raise
     return websocket
 
 
-app = FastAPI(title="EDITH Hermes Runtime Bridge", version="0.4.0")
+@asynccontextmanager
+async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+    application.state.rpc_pool = RPCPool(_connect)
+    try:
+        yield
+    finally:
+        await application.state.rpc_pool.close()
+
+
+app = FastAPI(title="EDITH Hermes Runtime Bridge", version="0.4.0", lifespan=lifespan)
 
 
 @app.websocket("/ws")
@@ -103,31 +118,13 @@ async def rpc(request: Request) -> dict[str, Any]:
     payload = await request.json()
     if payload.get("jsonrpc") != "2.0" or not payload.get("method"):
         raise HTTPException(422, "A JSON-RPC 2.0 method is required")
-    request_id = payload.get("id", 1)
-    websocket = await _connect()
     try:
-        await websocket.send(json.dumps(payload, separators=(",", ":")))
-        while True:
-            message = json.loads(await asyncio.wait_for(websocket.recv(), timeout=300))
-            if message.get("id") == request_id and ("result" in message or "error" in message):
-                return cast(dict[str, Any], message)
-            if "id" in message and "method" in message:
-                await websocket.send(
-                    json.dumps(
-                        {
-                            "jsonrpc": "2.0",
-                            "id": message["id"],
-                            "error": {
-                                "code": -32001,
-                                "message": "Interactive response required; use the event stream",
-                            },
-                        }
-                    )
-                )
+        pool: RPCPool = request.app.state.rpc_pool
+        return await pool.request(payload)
     except TimeoutError as exc:
         raise HTTPException(504, "Hermes RPC timed out") from exc
-    finally:
-        await websocket.close()
+    except ConnectionError as exc:
+        raise HTTPException(502, str(exc)) from exc
 
 
 @app.get("/events")

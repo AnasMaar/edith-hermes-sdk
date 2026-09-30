@@ -235,9 +235,11 @@ See the [API reference](docs/convenience-api.md) for typed signatures and extens
 
 ## Verification status
 
-The [September 30 verification report](docs/verification-2026-09-30.md) records **360 passing
-tests on each of Python 3.10–3.13**, live Docker/Kubernetes lifecycle checks, real Hermes process
-checks inside Linux, and PostgreSQL storage/concurrent job and lease checks.
+The [latest recovery and verification report](docs/docker-recovery-2026-09-30.md) records
+**378 passing tests on each of Python 3.10–3.13**, live Docker/Kubernetes lifecycle checks,
+real Hermes process checks inside Linux, and PostgreSQL storage/concurrent job and lease checks.
+Docker was restored without a factory reset. Persistent RPC connections now preserve native
+session ownership; real Docker and Kubernetes checks passed a 25-second idle gap.
 
 **Real model-selected Python tools now work:** installed local `gpt-oss:20b`, served at 65,536
 context tokens, invoked the multiplication callback and a dynamically attached addition callback
@@ -245,8 +247,11 @@ through Docker Hermes. Both direct schemas and native progressive tool search we
 No cloud model key was used. Generation coverage is separate from invoking every native RPC live.
 One progressive-search repeat missed a dynamically added tool; the report preserves that failure
 and explains direct-schema configuration and explicit discovery instructions.
-The final live repeat hit a full host disk and Docker cleanup timeouts; those interrupted checks
-are recorded separately from successful runs, and image startup has an independent CI gate.
+The earlier disk-full run and a later low-disk-aborted progressive-search repeat are preserved
+in the reports, not counted as successes. Direct-schema callbacks returned 96 and 42 after the
+connection fix; the final progressive model repeat still needs a host with more free disk space.
+Model verification now checks initial disk headroom before provisioning; image startup also
+has an independent CI gate.
 External OAuth/OIDC/KMS, registry scanning/signing, cloud-provider deployments and multi-node
 operation still need separate live validation.
 
@@ -264,7 +269,8 @@ these results are not certification of an arbitrary production deployment.
 | --- | --- |
 | [Convenience API](docs/convenience-api.md) | Resources, native methods, typing, callbacks and completeness boundaries |
 | [Configuration](docs/configuration.md) | Runtime, database, authentication, secrets and image-policy choices |
-| [Verification report](docs/verification-2026-09-30.md) | Recorded live results, fixes and outstanding issues |
+| [Latest verification](docs/docker-recovery-2026-09-30.md) | Docker recovery, persistent RPC, live results and host limits |
+| [Earlier verification](docs/verification-2026-09-30.md) | Previous stabilization results and feature boundaries |
 | [Local demos](docs/local-verification.md) | Docker/Kubernetes demonstrations and earlier evidence |
 | [Control-plane deployment](deploy/control-plane/README.md) | FastAPI service, workers and production blueprint |
 | [Kubernetes pools](deploy/kubernetes/README.md) | Workload layout, networking and persistent storage |

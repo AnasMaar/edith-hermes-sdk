@@ -3,6 +3,10 @@
 Source version **0.4.0**. These are measured local results, not certification of
 every Hermes feature, model, cloud integration or production topology.
 
+**Later update:** [Docker recovery and persistent RPC verification](docker-recovery-2026-09-30.md)
+records the restored engine, owned-test cleanup, a session-lifetime fix and the
+new test runs. The failures below describe the earlier run.
+
 ## Quality gates
 
 - **360 tests passed on each of Python 3.10, 3.11, 3.12 and 3.13** on Windows,

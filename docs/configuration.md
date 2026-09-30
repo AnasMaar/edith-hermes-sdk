@@ -92,3 +92,14 @@ source push.
 [`deploy/control-plane/production.yaml`](../deploy/control-plane/production.yaml) explicitly opts
 into PostgreSQL, OIDC, Kubernetes, digest pinning, Trivy and Cosign/KMS. It is one deployment
 profile, not an SDK requirement.
+
+## Native connection ownership
+
+The control plane retains one authenticated RPC WebSocket per native connection
+descriptor; the HTTP runtime bridge retains one per application worker. Hermes
+owns native sessions on those sockets. Keep one bridge worker per runtime and
+route direct-WebSocket instances to a stable control-plane worker. PostgreSQL
+job locks alone do not provide distributed native session ownership or failover.
+After a connection loss, a new call reconnects without replaying the interrupted
+command; resuming the native session may still be required. Interactive server
+requests use the explicit duplex API, not the RPC-only connection.

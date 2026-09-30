@@ -443,6 +443,10 @@ class ProductionEngine:
                 instance["runtimeIdentity"],
                 str(arguments.get("retainData", "false")).lower() == "true",
             )
+            forget = getattr(self.gateway, "forget", None)
+            if forget is not None and instance.get("connection"):
+                with suppress(Exception):
+                    await forget(instance["connection"])
             await self.database.delete_runtime_tree(identity.owner, instance_id=instance["id"])
             image_id = instance.get("runtime", {}).get("managedImageId")
             if image_id:

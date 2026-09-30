@@ -34,7 +34,7 @@ jobs:
           node-version: "22"
       - run: uv sync --frozen --group dev
       - run: uv run ruff check .
-      - run: uv run mypy src/edith_hermes
+      - run: uv run mypy src/edith_hermes src/edith_hermes_rpc
       - run: uv run mypy --ignore-missing-imports services/control_plane/edith_hermes_control_plane services/runtime_bridge/edith_hermes_runtime_bridge
       - run: uv run python scripts/validate_contracts.py
       - run: npx --yes @redocly/cli@latest lint "contracts/openapi/*.yaml"

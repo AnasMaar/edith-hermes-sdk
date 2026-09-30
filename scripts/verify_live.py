@@ -11,6 +11,8 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import math
+import shutil
 import tempfile
 from pathlib import Path
 
@@ -18,7 +20,29 @@ from edith_hermes import Agent, Docker, Hermes, Model, tool
 from edith_hermes.errors import RemoteError
 
 
-async def main(model: str | None, direct_tools: bool = False) -> None:
+def verify_model_disk_space(min_free_gb: float) -> None:
+    if not math.isfinite(min_free_gb) or min_free_gb < 0:
+        raise ValueError("min_free_gb must be finite and nonnegative")
+    state_directory = tempfile.gettempdir()
+    free_gb = shutil.disk_usage(state_directory).free / (1024**3)
+    if free_gb < min_free_gb:
+        raise RuntimeError(
+            f"Model test requires {min_free_gb:g} GiB free on the state/temp drive "
+            f"({state_directory}); only {free_gb:.1f} GiB available. "
+            "Free disk space before loading a large model. --min-free-gb explicitly "
+            "adjusts this conservative preflight; it is not a runtime memory guarantee."
+        )
+
+
+async def main(
+    model: str | None, direct_tools: bool = False, idle_gap: float = 0, min_free_gb: float = 16
+) -> None:
+    if idle_gap < 0:
+        raise ValueError("idle_gap must be nonnegative")
+    if model:
+        # Large local models can expand Windows paging/storage before a turn.
+        # Reject low-headroom verification before creating any owned workload.
+        verify_model_disk_space(min_free_gb)
     failures = []
     tool_calls = []
 
@@ -182,6 +206,11 @@ async def main(model: str | None, direct_tools: bool = False) -> None:
                     return {"text": result.text, "tool_calls": tool_calls}
 
                 await check("real_local_model_tool_turn", model_turn)
+                if idle_gap:
+                    print(
+                        json.dumps({"check": "idle_session_gap", "seconds": idle_gap}), flush=True
+                    )
+                    await asyncio.sleep(idle_gap)
 
                 async def dynamic_tools():
                     calls = []
@@ -245,9 +274,21 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default=None)
     parser.add_argument(
+        "--min-free-gb",
+        type=float,
+        default=16,
+        help="Conservative initial temp/state drive reserve for model tests (default: 16 GiB)",
+    )
+    parser.add_argument(
         "--direct-tools",
         action="store_true",
         help="Expose MCP schemas directly instead of native progressive tool search",
     )
+    parser.add_argument(
+        "--idle-gap",
+        type=float,
+        default=0,
+        help="Wait between turns to test native session retention",
+    )
     args = parser.parse_args()
-    asyncio.run(main(args.model, args.direct_tools))
+    asyncio.run(main(args.model, args.direct_tools, args.idle_gap, args.min_free_gb))

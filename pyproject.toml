@@ -54,6 +54,7 @@ dev = [
 [tool.hatch.build.targets.wheel]
 packages = [
   "src/edith_hermes",
+  "src/edith_hermes_rpc",
   "services/control_plane/edith_hermes_control_plane",
 ]
 

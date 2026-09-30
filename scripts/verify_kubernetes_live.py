@@ -15,7 +15,9 @@ from edith_hermes_control_plane.providers.kubernetes import KubernetesProvider
 from edith_hermes.duplex import NativeConnection
 
 
-async def main(bridge_image: str):
+async def main(bridge_image: str, idle_gap: float = 0):
+    if idle_gap < 0:
+        raise ValueError("idle_gap must be nonnegative")
     provider = KubernetesProvider(
         Settings(
             runtime_namespace="edith-demo",
@@ -66,12 +68,18 @@ async def main(bridge_image: str):
             assert (
                 await client.post(url + "/rpc", json={"jsonrpc": "2.0", "id": 1, "method": "ping"})
             ).status_code == 401
+        native_sessions = []
         for name in ("Adam", "Anas"):
             await gateway.invoke(connection, "profiles.create", {"name": name})
             session = await gateway.invoke(
                 connection, "session.create", {"profile": name, "title": "live verification"}
             )
             assert session["result"]["session_id"]
+            native_sessions.append(session["result"]["session_id"])
+        if idle_gap:
+            await asyncio.sleep(idle_gap)
+            active = await gateway.invoke(connection, "session.active_list", {})
+            assert all(session_id in json.dumps(active) for session_id in native_sessions), active
         socket = await gateway._connect(connection)
         duplex = NativeConnection(socket, profile="Adam")
         try:
@@ -89,6 +97,7 @@ async def main(bridge_image: str):
                     "sessions": 3,
                     "unauthenticated_bridge_rejected": True,
                     "persistent_bridge_rpc": True,
+                    "idle_gap_seconds": idle_gap,
                 }
             ),
             flush=True,
@@ -106,4 +115,6 @@ async def main(bridge_image: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--bridge-image", default="edith-runtime-bridge:integration")
-    asyncio.run(main(parser.parse_args().bridge_image))
+    parser.add_argument("--idle-gap", type=float, default=0)
+    args = parser.parse_args()
+    asyncio.run(main(args.bridge_image, args.idle_gap))

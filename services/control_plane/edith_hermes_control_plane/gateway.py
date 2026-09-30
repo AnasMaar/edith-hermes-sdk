@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 from collections.abc import AsyncIterator
-from typing import Any, cast
+from contextlib import suppress
+from typing import Any
 from urllib.parse import quote, urlsplit, urlunsplit
 
 import httpx
 import websockets
+
+from edith_hermes_rpc import RPCPool
 
 
 class HermesGatewayError(RuntimeError):
@@ -24,12 +28,37 @@ class HermesGateway:
         self.timeout = timeout
         self._dashboard_clients: dict[str, httpx.AsyncClient] = {}
         self._login_lock = asyncio.Lock()
+        self._rpc_pools: dict[str, RPCPool] = {}
 
     async def close(self) -> None:
-        for client in self._dashboard_clients.values():
-            await client.aclose()
+        pools = list(self._rpc_pools.values())
+        self._rpc_pools.clear()
+        clients = list(self._dashboard_clients.values())
         self._dashboard_clients.clear()
-        await self.client.aclose()
+        results = await asyncio.gather(
+            *(pool.close() for pool in pools),
+            *(client.aclose() for client in clients),
+            self.client.aclose(),
+            return_exceptions=True,
+        )
+        for result in results:
+            if isinstance(result, BaseException):
+                raise result
+
+    @staticmethod
+    def _connection_key(connection: dict[str, Any]) -> str:
+        # Credential changes must not reuse an authenticated socket; keep the
+        # credential-bearing descriptor out of the cache key's representation.
+        return hashlib.sha256(json.dumps(connection, sort_keys=True).encode()).hexdigest()
+
+    async def forget(self, connection: dict[str, Any]) -> None:
+        pool = self._rpc_pools.pop(self._connection_key(connection), None)
+        if pool is not None:
+            await pool.close()
+        if (connection.get("authorization") or {}).get("scheme") == "dashboard_password":
+            client = self._dashboard_clients.pop(self._connection_key(connection), None)
+            if client is not None:
+                await client.aclose()
 
     async def invoke(
         self, connection: dict[str, Any], method: str, params: Any = None
@@ -51,18 +80,16 @@ class HermesGateway:
             response.raise_for_status()
             value: dict[str, Any] = response.json()
         else:
-            websocket = await self._connect(connection)
-            try:
-                await websocket.send(json.dumps(payload, separators=(",", ":")))
-                while True:
-                    value = cast(
-                        dict[str, Any],
-                        json.loads(await asyncio.wait_for(websocket.recv(), self.timeout)),
-                    )
-                    if value.get("id") == 1 and ("result" in value or "error" in value):
-                        break
-            finally:
-                await websocket.close()
+            key = self._connection_key(connection)
+            pool = self._rpc_pools.get(key)
+            if pool is None:
+
+                async def connect() -> Any:
+                    return await self._connect(connection)
+
+                pool = RPCPool(connect)
+                self._rpc_pools[key] = pool
+            value = await pool.request(payload, timeout=self.timeout)
         if value.get("error"):
             raise HermesGatewayError(value["error"])
         return value
@@ -107,10 +134,14 @@ class HermesGateway:
                 open_timeout=self.timeout,
                 max_size=16 * 1024 * 1024,
             )
-            ready = json.loads(await asyncio.wait_for(socket.recv(), self.timeout))
-            if ready.get("params", {}).get("type") != "gateway.ready":
-                await socket.close()
-                raise HermesGatewayError("Bridge did not emit gateway.ready")
+            try:
+                ready = json.loads(await asyncio.wait_for(socket.recv(), self.timeout))
+                if ready.get("params", {}).get("type") != "gateway.ready":
+                    raise HermesGatewayError("Bridge did not emit gateway.ready")
+            except BaseException:
+                with suppress(Exception):
+                    await socket.close()
+                raise
             return socket
         url = self._websocket_url(connection)
         authorization = connection.get("authorization") or {}
@@ -119,12 +150,14 @@ class HermesGateway:
             base = urlunsplit(
                 ("https" if parsed.scheme == "wss" else "http", parsed.netloc, "", "", "")
             )
-            # Separate cookie jar per instance: localhost ports share cookie domains.
+            # Separate jars by instance AND credentials: neither localhost ports
+            # nor changes of authenticated identity may reuse another login.
+            key = self._connection_key(connection)
             async with self._login_lock:
-                login = self._dashboard_clients.get(base)
+                login = self._dashboard_clients.get(key)
                 if login is None:
                     login = httpx.AsyncClient(timeout=30)
-                    self._dashboard_clients[base] = login
+                    self._dashboard_clients[key] = login
                 response = await login.post(base + "/api/auth/ws-ticket")
                 if response.status_code in {401, 403, 302, 303, 307}:
                     response = await login.post(
@@ -144,10 +177,14 @@ class HermesGateway:
             )
             url = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, query, parsed.fragment))
         websocket = await websockets.connect(url, open_timeout=10, max_size=16 * 1024 * 1024)
-        first = json.loads(await asyncio.wait_for(websocket.recv(), timeout=10))
-        if first.get("method") != "event" or first.get("params", {}).get("type") != "gateway.ready":
-            await websocket.close()
-            raise HermesGatewayError("Hermes gateway did not emit gateway.ready")
+        try:
+            first = json.loads(await asyncio.wait_for(websocket.recv(), timeout=10))
+            if first.get("method") != "event" or first.get("params", {}).get("type") != "gateway.ready":
+                raise HermesGatewayError("Hermes gateway did not emit gateway.ready")
+        except BaseException:
+            with suppress(Exception):
+                await websocket.close()
+            raise
         return websocket
 
     async def events(
