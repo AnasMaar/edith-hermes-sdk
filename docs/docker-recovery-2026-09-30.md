@@ -62,6 +62,11 @@ The tested control-plane image was `edith-control-plane:recovery-20260930`, loca
 image ID `sha256:094ba835e14a973cc403ad1c8d72de939830efa9d45fdb2c6fc17d3a88d040d8`.
 These are local test builds, not registry releases.
 
+All nine jobs passed in the [pre-promotion Linux CI run](https://github.com/AnasMaar/edith-hermes-sdk/actions/runs/36722510343)
+for source commit `a6ff264`: Python 3.10–3.13, quality/generation/wheel gates, three
+image builds (including default non-root control-plane startup), and actual
+PostgreSQL concurrency checks.
+
 ## Failures and host limits retained
 
 An initial Docker lifecycle run without any native model/provider configured
@@ -113,3 +118,6 @@ executed live. Use one bridge worker per native runtime, and stable per-instance
 routing for direct-WebSocket control-plane workers; SQL job locks do not replace
 native connection/session ownership. Build the bridge from this checkout before
 using the persistent HTTP RPC behavior.
+The SDK control-plane event stream uses native event replay. The raw bridge
+`/events` route and explicit duplex ownership transfers are not a guarantee of
+session retention after their owning socket disconnects.
