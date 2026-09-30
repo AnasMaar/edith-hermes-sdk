@@ -1,15 +1,33 @@
-"""PostgreSQL-backed resource and durable-job storage."""
+"""SQLite/PostgreSQL resource, lease and durable-job storage."""
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, cast
 
-from sqlalchemy import JSON, Boolean, DateTime, Index, Integer, String, Text, and_, or_, select
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Index,
+    Integer,
+    String,
+    Text,
+    and_,
+    or_,
+    select,
+    text,
+    update,
+)
+from sqlalchemy import (
+    delete as sql_delete,
+)
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.pool import AsyncAdaptedQueuePool
 
 
 def utcnow() -> datetime:
@@ -71,11 +89,29 @@ class IdempotencyRecord(Base):
 
 class Database:
     def __init__(self, url: str):
-        self.engine: AsyncEngine = create_async_engine(url, pool_pre_ping=True)
+        self.engine: AsyncEngine
+        if url.startswith("sqlite"):
+            # SQLite has one writer. A single queued connection also prevents
+            # same-process read-to-write snapshot upgrades from deadlocking.
+            # WAL + busy timeout handle independently connected workers.
+            self.engine = create_async_engine(
+                url,
+                pool_pre_ping=True,
+                connect_args={"timeout": 30},
+                poolclass=AsyncAdaptedQueuePool,
+                pool_size=1,
+                max_overflow=0,
+            )
+        else:
+            self.engine = create_async_engine(url, pool_pre_ping=True)
         self.sessions = async_sessionmaker(self.engine, expire_on_commit=False)
 
     async def create_schema(self) -> None:
         async with self.engine.begin() as connection:
+            if self.engine.dialect.name == "sqlite":
+                # WAL keeps concurrent readers from blocking queued writers.
+                # In-memory SQLite safely retains its memory journal instead.
+                await connection.exec_driver_sql("PRAGMA journal_mode=WAL")
             await connection.run_sync(Base.metadata.create_all)
 
     async def close(self) -> None:
@@ -136,6 +172,135 @@ class Database:
             await session.delete(record)
             return True
 
+    async def delete_runtime_tree(
+        self,
+        owner: tuple[str, str],
+        *,
+        instance_id: str,
+        profile_id: str | None = None,
+        session_id: str | None = None,
+    ) -> None:
+        """Remove a deleted runtime's dependent registry rows in one transaction.
+
+        Tool bundles/MCP definitions are independent, reusable resources. Only
+        their bindings belong to the runtime tree. Jobs remain as audit history.
+        """
+        whole_instance = profile_id is None and session_id is None
+        async with self.sessions.begin() as transaction:
+            records = list(
+                await transaction.scalars(
+                    select(Resource).where(
+                        Resource.tenant_id == owner[0],
+                        Resource.subject_id == owner[1],
+                        Resource.kind.in_(
+                            [
+                                "instance",
+                                "profile",
+                                "session",
+                                "turn",
+                                "tool_binding",
+                                "lease",
+                                "lease_slot",
+                            ]
+                        ),
+                    )
+                )
+            )
+            session_ids = {
+                row.resource_id
+                for row in records
+                if row.kind == "session"
+                and row.payload.get("instanceId") == instance_id
+                and (profile_id is None or row.payload.get("profileId") == profile_id)
+                and (session_id is None or row.resource_id == session_id)
+            }
+            for row in records:
+                value = row.payload
+                scope = value.get("scope") or {}
+                remove = (
+                    row.kind == "instance"
+                    and whole_instance
+                    and row.resource_id == instance_id
+                    or row.kind == "profile"
+                    and session_id is None
+                    and value.get("instanceId") == instance_id
+                    and (profile_id is None or row.resource_id == profile_id)
+                    or row.kind == "session"
+                    and row.resource_id in session_ids
+                    or row.kind == "turn"
+                    and value.get("sessionId") in session_ids
+                    or row.kind == "tool_binding"
+                    and session_id is None
+                    and scope.get("instanceId") == instance_id
+                    and (profile_id is None or scope.get("profileId") == profile_id)
+                    or row.kind == "lease"
+                    and whole_instance
+                    and value.get("instanceId") == instance_id
+                    or row.kind == "lease_slot"
+                    and whole_instance
+                    and row.resource_id == instance_id
+                )
+                if remove:
+                    await transaction.delete(row)
+
+    async def reserve_lease_slot(
+        self, instance_id: str, owner: tuple[str, str], lease_id: str, expires_at: datetime
+    ) -> bool:
+        """Atomically reserve one instance, including across control-plane workers.
+
+        The resource primary key arbitrates first insertion. Version-checked
+        updates arbitrate expired slots; an old lease cannot release a newer one.
+        This uses the existing schema so no destructive migration is required.
+        """
+        payload = {"leaseId": lease_id, "expiresAt": expires_at.isoformat()}
+        try:
+            async with self.sessions.begin() as transaction:
+                if self.engine.dialect.name == "sqlite":
+                    await transaction.execute(text("BEGIN IMMEDIATE"))
+                record = await transaction.get(Resource, ("lease_slot", instance_id, *owner))
+                if record is None:
+                    transaction.add(
+                        Resource(
+                            kind="lease_slot",
+                            resource_id=instance_id,
+                            tenant_id=owner[0],
+                            subject_id=owner[1],
+                            payload=payload,
+                        )
+                    )
+                    await transaction.flush()
+                    return True
+                if datetime.fromisoformat(record.payload["expiresAt"]) > utcnow():
+                    return False
+                result = await transaction.execute(
+                    update(Resource)
+                    .where(
+                        Resource.kind == "lease_slot",
+                        Resource.resource_id == instance_id,
+                        Resource.tenant_id == owner[0],
+                        Resource.subject_id == owner[1],
+                        Resource.version == record.version,
+                    )
+                    .values(payload=payload, version=record.version + 1, updated_at=utcnow())
+                )
+                return cast(CursorResult[Any], result).rowcount == 1
+        except IntegrityError:
+            return False
+
+    async def release_lease_slot(
+        self, instance_id: str, owner: tuple[str, str], lease_id: str
+    ) -> None:
+        async with self.sessions.begin() as transaction:
+            await transaction.execute(
+                sql_delete(Resource).where(
+                    Resource.kind == "lease_slot",
+                    Resource.resource_id == instance_id,
+                    Resource.tenant_id == owner[0],
+                    Resource.subject_id == owner[1],
+                    Resource.payload["leaseId"].as_string() == lease_id,
+                )
+            )
+
     async def find(
         self, kind: str, resource_id: str
     ) -> tuple[tuple[str, str], dict[str, Any]] | None:
@@ -192,6 +357,9 @@ class Database:
 
     async def claim_job(self, worker_id: str) -> DurableJob | None:
         async with self.sessions.begin() as session:
+            if self.engine.dialect.name == "sqlite":
+                # SQLite ignores FOR UPDATE; reserve the write lock before selecting.
+                await session.execute(text("BEGIN IMMEDIATE"))
             stale = utcnow() - timedelta(minutes=5)
             query = (
                 select(DurableJob)

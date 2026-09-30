@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Hermes SDK Control Plane API
-  version: 0.3.1
+  version: 0.4.0
   summary: Provision and address Hermes instances, profiles and pools.
   description: |
     SDK-owned orchestration contract. It complements, rather than replaces, the upstream Hermes
@@ -560,7 +560,9 @@ components:
         authorization:
           type: object
           properties:
-            scheme: { type: string, enum: [bearer, websocket_ticket, none] }
+            scheme: { type: string, enum: [bearer, websocket_ticket, dashboard_password, none] }
+            username: { type: string }
+            password: { type: string, writeOnly: true }
             token: { type: string, writeOnly: true }
         resources: { $ref: '#/components/schemas/ResourceRequirements' }
         environment:
@@ -709,7 +711,9 @@ components:
         authorization:
           type: object
           properties:
-            scheme: { type: string, enum: [bearer, websocket_ticket, process_stdio, none] }
+            scheme: { type: string, enum: [bearer, websocket_ticket, dashboard_password, process_stdio, none] }
+            username: { type: string }
+            password: { type: string, writeOnly: true }
             token: { type: string, writeOnly: true }
         expiresAt: { type: string, format: date-time }
     CapabilityDocument:

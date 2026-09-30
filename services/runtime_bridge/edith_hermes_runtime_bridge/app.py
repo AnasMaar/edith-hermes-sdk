@@ -5,12 +5,14 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import secrets
 from collections.abc import AsyncIterator
+from contextlib import suppress
 from typing import Any, cast
 from urllib.parse import quote, urlsplit, urlunsplit
 
 import websockets
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, WebSocket
 from fastapi.responses import StreamingResponse
 
 
@@ -39,7 +41,50 @@ async def _connect() -> Any:
     return websocket
 
 
-app = FastAPI(title="EDITH Hermes Runtime Bridge", version="0.3.1")
+app = FastAPI(title="EDITH Hermes Runtime Bridge", version="0.4.0")
+
+
+@app.websocket("/ws")
+async def duplex(client: WebSocket) -> None:
+    token = os.getenv("EDITH_BRIDGE_TOKEN", "")
+    if token and not secrets.compare_digest(
+        client.headers.get("authorization", ""), "Bearer " + token
+    ):
+        await client.close(code=1008)
+        return
+    upstream = await _connect()
+    tasks: list[asyncio.Task[None]] = []
+
+    async def to_native() -> None:
+        while True:
+            await upstream.send(await client.receive_text())
+
+    async def to_client() -> None:
+        async for frame in upstream:
+            await client.send_text(frame.decode() if isinstance(frame, bytes) else frame)
+
+    try:
+        await client.accept()
+        await client.send_json(
+            {"jsonrpc": "2.0", "method": "event", "params": {"type": "gateway.ready"}}
+        )
+        tasks = [asyncio.create_task(to_native()), asyncio.create_task(to_client())]
+        await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+    finally:
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        await upstream.close()
+        with suppress(RuntimeError):
+            await client.close()
+
+
+def _authorize(request: Request) -> None:
+    token = os.getenv("EDITH_BRIDGE_TOKEN", "")
+    if token and not secrets.compare_digest(
+        request.headers.get("authorization", ""), "Bearer " + token
+    ):
+        raise HTTPException(401, "Invalid runtime bridge credential")
 
 
 @app.get("/health")
@@ -54,6 +99,7 @@ async def health() -> dict[str, Any]:
 
 @app.post("/rpc")
 async def rpc(request: Request) -> dict[str, Any]:
+    _authorize(request)
     payload = await request.json()
     if payload.get("jsonrpc") != "2.0" or not payload.get("method"):
         raise HTTPException(422, "A JSON-RPC 2.0 method is required")
@@ -86,6 +132,8 @@ async def rpc(request: Request) -> dict[str, Any]:
 
 @app.get("/events")
 async def events(request: Request) -> StreamingResponse:
+    _authorize(request)
+
     async def stream() -> AsyncIterator[str]:
         websocket = await _connect()
         try:

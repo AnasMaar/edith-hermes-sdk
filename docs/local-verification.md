@@ -1,5 +1,8 @@
 # Local verification — 2026-09-23
 
+Historical report. For current results, including successful real-model Python
+tool calls, see [September 30 verification](verification-2026-09-30.md).
+
 These are working-tree results on Windows with Docker Desktop, not claims about the
 previously published v0.3.1 package. The original demo failed in the first real run.
 

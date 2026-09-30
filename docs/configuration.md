@@ -49,6 +49,11 @@ All backends store resources, jobs, logs, ownership, leases and idempotency reco
 same SQLAlchemy repository. PostgreSQL is only needed for multi-replica job claiming; it is not
 part of a Hermes instance.
 
+SQLite queues access through one connection per database object and uses WAL;
+keep it on a local filesystem. Atomic job and lease claims are tested on both
+databases. This is not general multi-writer pool reconciliation or crash-recovery
+certification; use one controller for pool resizing/deletion.
+
 ## Authentication modes
 
 | `EDITH_AUTH_MODE` | Behavior |
@@ -78,6 +83,11 @@ Local process/container `environment.secretRef` values resolve through
 references remain native Kubernetes `Secret` references.
 
 ## Hardened Kubernetes profile
+
+For the 0.4.0 duplex protocol, build the bridge from this checkout and explicitly
+set `EDITH_RUNTIME_BRIDGE_IMAGE` to that image/digest. Existing v0.3.1 image tags
+in the reference deployment are older releases, not automatically updated by a
+source push.
 
 [`deploy/control-plane/production.yaml`](../deploy/control-plane/production.yaml) explicitly opts
 into PostgreSQL, OIDC, Kubernetes, digest pinning, Trivy and Cosign/KMS. It is one deployment

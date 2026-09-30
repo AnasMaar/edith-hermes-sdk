@@ -1,5 +1,8 @@
 # Verification pass — 2026-09-25
 
+Historical report. The subsequent [September 30 pass](verification-2026-09-30.md)
+resolved the model/tool execution failure and added regression/live coverage.
+
 This describes the unreleased working tree, not the published 0.3.1 package.
 It does not certify every RPC or every infrastructure provider for production.
 

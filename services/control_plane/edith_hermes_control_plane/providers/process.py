@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import secrets
 import socket
 from pathlib import Path
 from typing import Any
@@ -58,16 +59,26 @@ class ProcessProvider:
             arguments = ["serve", "--host", "127.0.0.1", "--port", str(port)]
         environment = self._environment(runtime)
         environment["HERMES_HOME"] = home
+        environment["HERMES_DASHBOARD_SESSION_TOKEN"] = runtime["sessionToken"]
         Path(home).mkdir(parents=True, exist_ok=True)
-        process = await asyncio.create_subprocess_exec(
-            executable,
-            *arguments,
-            env=environment,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT,
-        )
+        # A PIPE without a reader eventually blocks a real, chatty Hermes process.
+        with (Path(home) / "edith-process.log").open("ab") as log:
+            process = await asyncio.create_subprocess_exec(
+                executable,
+                *arguments,
+                env=environment,
+                stdout=log,
+                stderr=asyncio.subprocess.STDOUT,
+            )
         self.processes[instance_id] = process
-        await self._wait_port(process, port)
+        try:
+            await self._wait_port(process, port)
+        except BaseException:
+            if process.returncode is None:
+                process.terminate()
+            await process.wait()
+            self.processes.pop(instance_id, None)
+            raise
         return process
 
     async def _wait_port(
@@ -85,7 +96,6 @@ class ProcessProvider:
                 return
             except OSError:
                 await asyncio.sleep(0.1)
-        process.terminate()
         raise TimeoutError(f"Hermes process did not listen on port {port}")
 
     async def provision(
@@ -105,9 +115,9 @@ class ProcessProvider:
                 )
         port = int(runtime.get("port") or _free_port())
         home = str(
-            runtime.get("hermesHome")
-            or Path(self.settings.local_runtime_root) / instance_id
+            runtime.get("hermesHome") or Path(self.settings.local_runtime_root) / instance_id
         )
+        runtime = {**runtime, "sessionToken": secrets.token_urlsafe(32)}
         process = await self._spawn(instance_id, runtime, port, home)
         return RuntimeArtifact(
             identity={
@@ -116,14 +126,13 @@ class ProcessProvider:
                 "instanceId": instance_id,
                 "port": port,
                 "hermesHome": home,
+                "ownsHome": not bool(runtime.get("hermesHome")),
                 "runtime": runtime,
             },
             connection={
                 "instanceId": instance_id,
-                "transports": [
-                    {"kind": "websocket", "url": f"ws://127.0.0.1:{port}/api/ws"}
-                ],
-                "authorization": {"scheme": "none"},
+                "transports": [{"kind": "websocket", "url": f"ws://127.0.0.1:{port}/api/ws"}],
+                "authorization": {"scheme": "bearer", "token": runtime["sessionToken"]},
                 "expiresAt": "9999-12-31T23:59:59Z",
             },
         )
@@ -149,7 +158,13 @@ class ProcessProvider:
 
     async def delete(self, identity: dict[str, Any], retain_data: bool = False) -> None:
         await self.scale(identity, 0)
-        if not retain_data:
+        if not retain_data and identity.get("ownsHome"):
             import shutil
 
-            await asyncio.to_thread(shutil.rmtree, str(identity["hermesHome"]), True)
+            target = Path(identity["hermesHome"]).resolve()
+            root = Path(self.settings.local_runtime_root).resolve()
+            if target.parent != root:
+                raise RuntimeError(
+                    "Refusing to delete a process home outside the managed runtime root"
+                )
+            await asyncio.to_thread(shutil.rmtree, str(target), True)

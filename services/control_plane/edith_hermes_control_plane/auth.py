@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -35,12 +36,15 @@ class Authenticator:
         self._jwks = PyJWKClient(jwks_url) if settings.auth_mode == "oidc" else None
 
     async def __call__(self, request: Request) -> Identity:
+        return await self.from_headers(request.headers)
+
+    async def from_headers(self, headers: Mapping[str, str]) -> Identity:
         if self.settings.auth_mode == "none":
             return Identity(
-                request.headers.get("x-edith-tenant", self.settings.anonymous_tenant_id),
-                request.headers.get("x-edith-subject", self.settings.anonymous_subject_id),
+                headers.get("x-edith-tenant", self.settings.anonymous_tenant_id),
+                headers.get("x-edith-subject", self.settings.anonymous_subject_id),
             )
-        authorization = request.headers.get("authorization", "")
+        authorization = headers.get("authorization", "")
         if not authorization.startswith("Bearer "):
             raise HTTPException(401, "Bearer authentication is required")
         token = authorization[7:].strip()

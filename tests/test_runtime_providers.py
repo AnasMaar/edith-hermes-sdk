@@ -45,6 +45,11 @@ async def test_process_provider_owns_local_lifecycle(tmp_path: Path) -> None:
     )
     assert artifact.identity["provider"] == "process"
     assert artifact.connection["transports"][0]["kind"] == "websocket"
+    authorization = artifact.connection["authorization"]
+    assert authorization["scheme"] == "bearer"
+    assert len(authorization["token"]) >= 32
+    assert artifact.identity["runtime"]["sessionToken"] == authorization["token"]
+    assert (Path(artifact.identity["hermesHome"]) / "edith-process.log").is_file()
     await provider.scale(artifact.identity, 0)
     await provider.scale(artifact.identity, 1)
     await provider.delete(artifact.identity)
@@ -58,9 +63,7 @@ class NotFound(Exception):
 class FakeContainer:
     def __init__(self) -> None:
         self.id = "container-id"
-        self.attrs = {
-            "NetworkSettings": {"Ports": {"9119/tcp": [{"HostPort": "49119"}]}}
-        }
+        self.attrs = {"NetworkSettings": {"Ports": {"9119/tcp": [{"HostPort": "49119"}]}}}
         self.actions: list[str] = []
 
     def reload(self) -> None:
@@ -97,6 +100,10 @@ class FakeDockerClient:
     def __init__(self) -> None:
         self.container = FakeContainer()
         self.containers = FakeContainers(self.container)
+        self.removed_volumes: list[str] = []
+        self.volumes = types.SimpleNamespace(
+            get=lambda name: types.SimpleNamespace(remove=lambda: self.removed_volumes.append(name))
+        )
 
     def ping(self) -> bool:
         return True
@@ -119,9 +126,7 @@ async def test_container_provider_owns_docker_lifecycle(monkeypatch: pytest.Monk
             "kind": "container",
             "skipReadinessCheck": True,
             "resources": {"cpu": "500m", "memory": "1Gi"},
-            "environment": {
-                "PROVIDER_KEY": {"secretRef": {"name": "provider", "key": "key"}}
-            },
+            "environment": {"PROVIDER_KEY": {"secretRef": {"name": "provider", "key": "key"}}},
         },
         {},
     )
@@ -131,7 +136,8 @@ async def test_container_provider_owns_docker_lifecycle(monkeypatch: pytest.Monk
     await provider.scale(artifact.identity, 0)
     await provider.scale(artifact.identity, 1)
     await provider.delete(artifact.identity)
-    assert client.container.actions[-3:] == ["stop", "start", "remove"]
+    assert client.container.actions[-4:] == ["stop", "start", "reload", "remove"]
+    assert client.removed_volumes == ["edith-hermes-instance-container-data"]
     await provider.close()
 
 
@@ -161,9 +167,7 @@ async def test_cloud_provider_delegates_lifecycle_to_configured_adapter() -> Non
                     "identity": {"remoteId": "remote-1"},
                     "connection": {
                         "instanceId": "instance_cloud",
-                        "transports": [
-                            {"kind": "websocket", "url": "wss://cloud.example/api/ws"}
-                        ],
+                        "transports": [{"kind": "websocket", "url": "wss://cloud.example/api/ws"}],
                         "expiresAt": "9999-12-31T23:59:59Z",
                     },
                 },

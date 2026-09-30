@@ -21,21 +21,25 @@ def _name(value: str) -> str:
 
 class KubernetesProvider:
     kind = "kubernetes"
+
     def __init__(self, settings: Settings):
         self.settings = settings
         self.apps: client.AppsV1Api | None = None
         self.core: client.CoreV1Api | None = None
+        self.api_client: client.ApiClient | None = None
 
     async def start(self) -> None:
         try:
             config.load_incluster_config()
         except config.ConfigException:
             await config.load_kube_config(context=self.settings.kubernetes_context or None)
-        self.apps = client.AppsV1Api()
-        self.core = client.CoreV1Api()
+        self.api_client = client.ApiClient()
+        self.apps = client.AppsV1Api(self.api_client)
+        self.core = client.CoreV1Api(self.api_client)
 
     async def close(self) -> None:
-        await client.ApiClient().close()
+        if self.api_client:
+            await self.api_client.close()
 
     def ready(self) -> bool:
         return self.apps is not None and self.core is not None
@@ -121,7 +125,10 @@ class KubernetesProvider:
             resource_limits["ephemeral-storage"] = str(resource_spec["ephemeralStorage"])
         if resource_spec.get("gpu"):
             resource_limits["nvidia.com/gpu"] = str(resource_spec["gpu"])
-        environment = [client.V1EnvVar(name="HERMES_HOME", value="/opt/data")]
+        environment = [
+            client.V1EnvVar(name="HERMES_HOME", value="/opt/data"),
+            client.V1EnvVar(name="HOME", value="/opt/data"),
+        ]
         for key, value in (runtime.get("environment") or {}).items():
             if "value" in value:
                 environment.append(client.V1EnvVar(name=key, value=str(value["value"])))
@@ -147,9 +154,7 @@ class KubernetesProvider:
         volumes = [
             client.V1Volume(
                 name="data",
-                persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(
-                    claim_name=pvc
-                ),
+                persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(claim_name=pvc),
             )
         ]
         for item in runtime.get("volumes") or []:
@@ -180,9 +185,15 @@ class KubernetesProvider:
             name="hermes",
             image=image,
             image_pull_policy=placement.get("imagePullPolicy", "IfNotPresent"),
+            command=["/opt/hermes/.venv/bin/hermes"],
             args=runtime.get("command")
             or ["serve", "--host", "127.0.0.1", "--port", str(self.settings.gateway_port)],
-            env=[*environment, token_env],
+            env=[
+                *environment,
+                client.V1EnvVar(
+                    name="HERMES_DASHBOARD_SESSION_TOKEN", value_from=token_env.value_from
+                ),
+            ],
             ports=[
                 client.V1ContainerPort(name="gateway", container_port=self.settings.gateway_port)
             ],
@@ -208,6 +219,7 @@ class KubernetesProvider:
                     value=f"ws://127.0.0.1:{self.settings.gateway_port}/api/ws",
                 ),
                 token_env,
+                client.V1EnvVar(name="EDITH_BRIDGE_TOKEN", value_from=token_env.value_from),
             ],
             ports=[client.V1ContainerPort(name="bridge", container_port=self.settings.bridge_port)],
             readiness_probe=client.V1Probe(
@@ -306,7 +318,7 @@ class KubernetesProvider:
                 {"kind": "http", "url": f"http://{dns}:{self.settings.bridge_port}"},
                 {"kind": "sse", "url": f"http://{dns}:{self.settings.bridge_port}/events"},
             ],
-            "authorization": {"scheme": "none"},
+            "authorization": {"scheme": "bearer", "token": gateway_token},
             "expiresAt": "9999-12-31T23:59:59Z",
         }
         return RuntimeArtifact(identity=identity, connection=connection)

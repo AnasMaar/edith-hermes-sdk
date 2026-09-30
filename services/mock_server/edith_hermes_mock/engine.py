@@ -146,7 +146,7 @@ class MockEngine:
             self.required("instance", instance_id, owner)
             return 200, {
                 "instanceId": instance_id,
-                "facadeVersion": "0.3.1",
+                "facadeVersion": "0.4.0",
                 "upstreamContract": "gateway-contract.openrpc.json",
                 "transports": ["http", "sse", "json_rpc"],
                 "nativeMethods": [],

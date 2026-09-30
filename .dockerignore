@@ -1,0 +1,10 @@
+.git
+.venv
+.integration
+.demo
+.edith-hermes
+__pycache__
+*.db
+.env
+.env.*
+dist

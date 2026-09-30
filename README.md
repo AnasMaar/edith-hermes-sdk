@@ -11,7 +11,7 @@
   <a href="docs/convenience-api.md"><img src="https://img.shields.io/badge/API-Typed-f078c6?style=flat-square&amp;labelColor=251b30" alt="Typed Python API"></a>
   <a href="contracts/openapi"><img src="https://img.shields.io/badge/OpenAPI-3.1-dc86dc?style=flat-square&amp;labelColor=251b30" alt="OpenAPI 3.1 contracts"></a>
   <a href=".github/workflows/ci.yml"><img src="https://img.shields.io/badge/CI-GitHub_Actions-a985ed?style=flat-square&amp;logo=githubactions&amp;logoColor=white&amp;labelColor=251b30" alt="GitHub Actions CI configuration"></a>
-  <a href="docs/verification-2026-09-25.md"><img src="https://img.shields.io/badge/Status-Unreleased-e69acc?style=flat-square&amp;labelColor=251b30" alt="Convenience API: unreleased working tree"></a>
+  <a href="docs/verification-2026-09-30.md"><img src="https://img.shields.io/badge/Source-0.4.0-e69acc?style=flat-square&amp;labelColor=251b30" alt="Verified source version 0.4.0"></a>
 </p>
 
 <p align="center">
@@ -28,7 +28,8 @@ to a deployed service.
 
 The package and imports remain `edith-hermes-sdk` and `edith_hermes`. This is an independent
 project built around [Nous Research's Hermes Agent](https://github.com/NousResearch/hermes-agent).
-The convenience API shown here lives in the **unreleased working tree**; install from this checkout.
+The convenience API is included in the **0.4.0 source on main**; install from this checkout.
+A source push does not publish a PyPI package or new versioned container images.
 
 ## Quickstart
 
@@ -105,7 +106,11 @@ model = Model(
     base_url=os.environ["HERMES_MODEL_BASE_URL"],
     api_key=os.environ["HERMES_MODEL_API_KEY"],
 )
-adam_config = Agent("Adam", model=model, instructions="Be concise.")
+adam_config = Agent(
+    "Adam", model=model, instructions="Be concise.", max_turns=8,
+    # Useful for a small Python tool collection; native tool search remains configurable.
+    config={"tool_search.enabled": "off"},
+)
 # Supply adam_config to create_instance(..., agents=[adam_config]).
 ```
 
@@ -127,7 +132,25 @@ result = await turn.wait(timeout=180)
 # await turn.stop()
 ```
 
-See [verification status](#verification-status) for the current local-model tool-execution failure.
+See [verification status](#verification-status) for the tested local model and context requirements.
+
+### Add tools and select a conversation later
+
+Annotated functions work directly, without requiring the decorator:
+
+```python
+def add(a: int, b: int) -> int:
+    """Add two integers."""
+    return a + b
+
+binding = await adam.add_tools([add])
+await adam.open_session(existing_session_id)
+result = await adam.run("Call add with 19 and 23.")
+await adam.remove_tools((await binding.get())["id"])
+```
+
+Tool attachment refreshes the profile's live sessions. Removal revokes an owned callback
+after its last binding is removed. Native approval settings are not globally disabled.
 
 ## Connect to an existing instance
 
@@ -212,20 +235,28 @@ See the [API reference](docs/convenience-api.md) for typed signatures and extens
 
 ## Verification status
 
-The [September 25 verification report](docs/verification-2026-09-25.md) records **338 passing
-tests**, live Docker and Kubernetes lifecycle checks, a real Hermes process test inside Linux,
-and PostgreSQL storage/concurrent job-claim checks. Generation coverage is separate from live
-verification of individual methods.
+The [September 30 verification report](docs/verification-2026-09-30.md) records **360 passing
+tests on each of Python 3.10–3.13**, live Docker/Kubernetes lifecycle checks, real Hermes process
+checks inside Linux, and PostgreSQL storage/concurrent job and lease checks.
 
-The tested local `gemma3-tools:12b` model discovered the registered tool but emitted tool-call
-text without invoking the Python callback. End-to-end model-selected tool execution is still
-unresolved. External OAuth/OIDC/KMS, registry scanning/signing, cloud-provider deployments and
-multi-node operation have not been verified live.
+**Real model-selected Python tools now work:** installed local `gpt-oss:20b`, served at 65,536
+context tokens, invoked the multiplication callback and a dynamically attached addition callback
+through Docker Hermes. Both direct schemas and native progressive tool search were exercised.
+No cloud model key was used. Generation coverage is separate from invoking every native RPC live.
+One progressive-search repeat missed a dynamically added tool; the report preserves that failure
+and explains direct-schema configuration and explicit discovery instructions.
+The final live repeat hit a full host disk and Docker cleanup timeouts; those interrupted checks
+are recorded separately from successful runs, and image startup has an independent CI gate.
+External OAuth/OIDC/KMS, registry scanning/signing, cloud-provider deployments and multi-node
+operation still need separate live validation.
 
 Current adapters support **profile-scoped** tool bindings. Per-turn/session tool isolation,
 per-session environment overrides, branching by SDK `fromTurnId`, and MCP secret-reference/native
 allow-list reconciliation are not implemented. Complete typed cloud management still needs an
-authoritative provider contract and adapter. The report gives the exact boundaries.
+authoritative provider contract and adapter. Automatic pool idle eviction, StatefulSet pool
+mapping and custom schedulers are explicitly rejected; supported pools manage independent runtimes.
+Serialize pool resizing/deletion through one controller. The report gives the exact boundaries;
+these results are not certification of an arbitrary production deployment.
 
 ## Documentation
 
@@ -233,7 +264,7 @@ authoritative provider contract and adapter. The report gives the exact boundari
 | --- | --- |
 | [Convenience API](docs/convenience-api.md) | Resources, native methods, typing, callbacks and completeness boundaries |
 | [Configuration](docs/configuration.md) | Runtime, database, authentication, secrets and image-policy choices |
-| [Verification report](docs/verification-2026-09-25.md) | Recorded live results, fixes and outstanding issues |
+| [Verification report](docs/verification-2026-09-30.md) | Recorded live results, fixes and outstanding issues |
 | [Local demos](docs/local-verification.md) | Docker/Kubernetes demonstrations and earlier evidence |
 | [Control-plane deployment](deploy/control-plane/README.md) | FastAPI service, workers and production blueprint |
 | [Kubernetes pools](deploy/kubernetes/README.md) | Workload layout, networking and persistent storage |

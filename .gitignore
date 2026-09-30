@@ -11,4 +11,6 @@ build/
 htmlcov/
 mock-state.db
 .env
-
+.integration/
+.demo/
+.edith-hermes/

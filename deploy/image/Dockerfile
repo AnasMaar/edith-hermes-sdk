@@ -12,6 +12,7 @@ LABEL org.opencontainers.image.title="Hermes SDK Kubernetes Runtime" \
 # A Kubernetes pod supplies volume ownership through fsGroup, so this derivative bypasses s6 and
 # executes one headless Hermes backend as the upstream non-root user.
 USER 10000:10000
+ENV HOME=/opt/data HERMES_HOME=/opt/data
 
 EXPOSE 9119
 VOLUME ["/opt/data"]
@@ -20,4 +21,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
   CMD curl --fail --silent --show-error http://127.0.0.1:9119/api/health || exit 1
 
 ENTRYPOINT ["/opt/hermes/.venv/bin/hermes"]
-CMD ["serve", "--host", "0.0.0.0", "--port", "9119"]
+CMD ["serve", "--host", "127.0.0.1", "--port", "9119"]

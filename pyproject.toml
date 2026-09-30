@@ -4,16 +4,18 @@ build-backend = "hatchling.build"
 
 [project]
 name = "edith-hermes-sdk"
-version = "0.3.1"
+version = "0.4.0"
 description = "Python SDK for building, provisioning, and controlling Hermes runtimes"
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
 dependencies = [
   "httpx>=0.27,<1",
   "pydantic>=2.8,<3",
+  "typing-extensions>=4.12,<5",
 ]
 
 [project.optional-dependencies]
+streaming = ["websockets>=14,<16"]
 embedded = [
   "docker>=7.1,<8",
   "kubernetes-asyncio>=31,<34",

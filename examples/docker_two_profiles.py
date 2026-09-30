@@ -14,6 +14,7 @@ import asyncio
 import json
 import os
 import socket
+import sys
 import uuid
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,7 @@ from edith_hermes_control_plane.config import Settings
 from fastapi import FastAPI
 
 from edith_hermes import AsyncEdithHermes
+from edith_hermes.errors import RemoteError
 
 OWNER = {"tenantId": "local", "subjectId": "demo-user"}
 NOTES: list[str] = []
@@ -237,6 +239,42 @@ async def main() -> None:
             }
         )
 
+        for own, other, profile_id in [
+            (adam_binding, anas_binding, adam_profile_id),
+            (anas_binding, adam_binding, anas["id"]),
+        ]:
+            native = await sdk.gateway.mcp_servers_list(
+                instance_id=instance_id, profile_id=profile_id
+            )
+            encoded = json.dumps(native)
+            assert own["id"] in encoded, "Profile is missing its native MCP server"
+            assert other["id"] not in encoded, "Another profile's MCP server leaked"
+            tested = await sdk.gateway.mcp_servers_test(
+                instance_id=instance_id, profile_id=profile_id, name="edith-" + own["id"]
+            )
+            print("Native MCP connection probe:", json.dumps(tested))
+            assert tested["result"]["ok"], "Hermes could not connect to its Python tool bridge"
+        print("Native Hermes MCP configuration: Adam/Anas separation verified.")
+
+        try:
+            await sdk.tools.execute_tool_call(
+                body={
+                    "callId": str(uuid.uuid4()),
+                    "tool": "anas.save_note",
+                    "arguments": {"text": "must not save"},
+                    "target": {
+                        "level": "profile",
+                        "instanceId": instance_id,
+                        "profileId": adam_profile_id,
+                    },
+                }
+            )
+        except RemoteError as exc:
+            assert exc.status == 404
+        else:
+            raise AssertionError("Adam was allowed to invoke Anas's tool")
+        print("Cross-profile SDK tool invocation: rejected as expected.")
+
         adam_session = await sdk.runtime.create_session(
             instance_id=instance_id,
             profile_id=adam_profile_id,
@@ -297,7 +335,10 @@ async def main() -> None:
                 indent=2,
             )
         )
-        await asyncio.to_thread(input, "\nPress Enter to delete the demo container and exit... ")
+        if sys.stdin.isatty() and "--no-pause" not in sys.argv:
+            await asyncio.to_thread(
+                input, "\nPress Enter to delete the demo container and exit... "
+            )
     finally:
         if sdk is not None and instance_id is not None:
             try:

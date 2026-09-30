@@ -1,5 +1,12 @@
 # Production control plane
 
+This is a deployment blueprint, not a tested production certification. See the
+[current verification boundaries](../../docs/verification-2026-09-30.md). Build
+both the control plane and bridge from the current checkout and replace the
+v0.3.1 image tags; pushing source does not publish replacement images. Serialize
+pool resizing/deletion through one controller. Safe job claiming is not proof of
+exactly-once runtime creation across worker crashes.
+
 This is the repository's hardened, multi-replica Kubernetes profile. It is not the only topology
 supported by the SDK. It explicitly opts into PostgreSQL, OIDC, BuildKit, Trivy, Cosign/KMS and the
 Kubernetes runtime provider. For SQLite, no-auth, process, local-container and external-runtime
@@ -74,9 +81,18 @@ arguments or returned by the API.
 Jobs are stored before workers accept them. Workers claim jobs with PostgreSQL row locks and
 `SKIP LOCKED`, so multiple control-plane replicas cannot execute one queued job simultaneously.
 Image and instance ownership is enforced from verified OIDC claims on every lookup. Kubernetes
-resource names carry the SDK instance ID, and the provider uses create-or-patch reconciliation so
-a retry converges instead of creating a second runtime.
+resource names carry the SDK instance ID, and provider-level create-or-patch calls
+can reconcile that known identity. Job-level crash recovery can still allocate a
+new instance identity; fault-injection/idempotent recovery needs separate work.
 
 BuildKit is a separate rootless StatefulSet with persistent cache. Scale control-plane replicas
 independently; increase `EDITH_WORKER_CONCURRENCY` only after measuring BuildKit, registry and
 cluster capacity.
+
+## Local container state
+
+The image runs as UID/GID 10000. Its default SQLite database, process runtime
+directory and local secret directory live in `/var/lib/edith`; mount a persistent
+volume there for durable local state. `EDITH_DATABASE_URL`,
+`EDITH_LOCAL_RUNTIME_ROOT` and `EDITH_SECRET_DIRECTORY` remain overridable. A
+PostgreSQL connection does not require retaining a local SQLite database.

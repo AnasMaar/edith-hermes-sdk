@@ -144,8 +144,9 @@ class _AsyncDynamicAPI:
 
 
 class _SyncNamespace:
-    def __init__(self, target: Any):
+    def __init__(self, target: Any, run: Callable[..., Any]):
         self._target = target
+        self._run = run
 
     def __getattr__(self, name: str) -> Callable[..., Any]:
         async_callable = getattr(self._target, name)
@@ -154,7 +155,7 @@ class _SyncNamespace:
             pending = async_callable(*args, **kwargs)
             if isinstance(pending, AsyncIterator):
                 raise TypeError("Use the asynchronous client for streaming operations")
-            result = asyncio.run(pending)
+            result = self._run(pending)
             if isinstance(result, AsyncIterator):
                 raise TypeError("Use the asynchronous client for streaming operations")
             return result
@@ -167,13 +168,27 @@ class EdithHermes:
 
     def __init__(self, async_client: AsyncEdithHermes):
         self._async_client = async_client
-        self.images = _SyncNamespace(async_client.images)
-        self.control_plane = _SyncNamespace(async_client.control_plane)
-        self.runtime = _SyncNamespace(async_client.runtime)
-        self.tools = _SyncNamespace(async_client.tools)
-        self.gateway = _SyncNamespace(async_client.gateway)
-        self.inference = _SyncNamespace(async_client.inference)
-        self.cloud = _SyncNamespace(async_client.cloud)
+        self._loop = asyncio.new_event_loop()
+        self.images = _SyncNamespace(async_client.images, self._run)
+        self.control_plane = _SyncNamespace(async_client.control_plane, self._run)
+        self.runtime = _SyncNamespace(async_client.runtime, self._run)
+        self.tools = _SyncNamespace(async_client.tools, self._run)
+        self.gateway = _SyncNamespace(async_client.gateway, self._run)
+        self.inference = _SyncNamespace(async_client.inference, self._run)
+        self.cloud = _SyncNamespace(async_client.cloud, self._run)
+
+    def _run(self, pending: Any) -> Any:
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            pass
+        else:
+            pending.close()
+            raise RuntimeError("Use AsyncEdithHermes inside an async event loop")
+        if self._loop.is_closed():
+            pending.close()
+            raise RuntimeError("The SDK client is closed")
+        return self._loop.run_until_complete(pending)
 
     @classmethod
     def remote(cls, **kwargs: Any) -> EdithHermes:
@@ -184,13 +199,20 @@ class EdithHermes:
         return cls(AsyncEdithHermes.embedded(driver=driver))
 
     def close(self) -> None:
-        asyncio.run(self._async_client.aclose())
+        if not self._loop.is_closed():
+            self._run(self._async_client.aclose())
+            self._loop.close()
 
     def wait_for_image_build(self, build_id: str, **kwargs: Any) -> dict[str, Any]:
-        return asyncio.run(self._async_client.wait_for_image_build(build_id, **kwargs))
+        return cast(
+            dict[str, Any], self._run(self._async_client.wait_for_image_build(build_id, **kwargs))
+        )
 
     def wait_for_provisioning_job(self, job_id: str, **kwargs: Any) -> dict[str, Any]:
-        return asyncio.run(self._async_client.wait_for_provisioning_job(job_id, **kwargs))
+        return cast(
+            dict[str, Any],
+            self._run(self._async_client.wait_for_provisioning_job(job_id, **kwargs)),
+        )
 
     def __enter__(self) -> EdithHermes:
         return self

@@ -15,7 +15,7 @@ from edith_hermes_control_plane.config import Settings  # noqa: E402
 from edith_hermes_control_plane.database import Database  # noqa: E402
 from edith_hermes_control_plane.providers import BuildArtifact, RuntimeArtifact  # noqa: E402
 
-from edith_hermes import AsyncEdithHermes  # noqa: E402
+from edith_hermes import AsyncEdithHermes, Hermes  # noqa: E402
 
 
 class FakeBuildKit:
@@ -249,6 +249,19 @@ async def test_real_control_plane_orchestration_with_provider_fakes(tmp_path: Pa
             json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
         )
         assert mcp.json()["result"]["tools"][0]["name"] == "ring_battery"
+        # Both public surfaces address the same real ASGI service and SQLite state.
+        hermes = Hermes(sdk)
+        profile = hermes.instances(ready["instanceId"]).profiles(ready["profileId"])
+        assert (await profile.get())["id"] == ready["profileId"]
+        assert (await hermes.images.builds(build["id"]).wait())["status"] == "succeeded"
+        assert (await hermes.tools.bundles(bundle["id"]).get())["name"] == "ring-tools"
+        result = (
+            await profile.sessions(session["id"]).turns(turn["id"]).approve("request", "allow_once")
+        )
+        assert result["method"] == "approval.respond"
+        assert result["params"]["choice"] == "once"
+        native = await profile.native.approval.pending(session_id=session["id"])
+        assert native["method"] == "approval.pending"
         await sdk.aclose()
         await http.aclose()
 

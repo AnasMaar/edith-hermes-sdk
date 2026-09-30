@@ -481,11 +481,12 @@ wheels = [
 
 [[package]]
 name = "edith-hermes-sdk"
-version = "0.3.1"
+version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
+    { name = "typing-extensions" },
 ]
 
 [package.optional-dependencies]
@@ -503,6 +504,9 @@ control-plane = [
 embedded = [
     { name = "docker" },
     { name = "kubernetes-asyncio" },
+]
+streaming = [
+    { name = "websockets" },
 ]
 
 [package.dev-dependencies]
@@ -537,10 +541,12 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.8,<3" },
     { name = "pyjwt", extras = ["crypto"], marker = "extra == 'control-plane'", specifier = ">=2.9,<3" },
     { name = "sqlalchemy", extras = ["asyncio"], marker = "extra == 'control-plane'", specifier = ">=2.0,<3" },
+    { name = "typing-extensions", specifier = ">=4.12,<5" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'control-plane'", specifier = ">=0.32,<1" },
     { name = "websockets", marker = "extra == 'control-plane'", specifier = ">=14,<16" },
+    { name = "websockets", marker = "extra == 'streaming'", specifier = ">=14,<16" },
 ]
-provides-extras = ["embedded", "control-plane"]
+provides-extras = ["streaming", "embedded", "control-plane"]
 
 [package.metadata.requires-dev]
 dev = [

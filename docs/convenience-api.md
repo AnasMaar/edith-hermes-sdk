@@ -1,6 +1,6 @@
 # Convenient API: coverage and behavior
 
-This working-tree API is not yet a published release. `Hermes` is the primary
+This API ships in the 0.4.0 source; older published artifacts do not supply it. `Hermes` is the primary
 entry point; `AsyncEdithHermes` remains supported for existing applications.
 Both use the same transports and backend. No database, Kubernetes cluster,
 authentication scheme, or KMS is imposed by the client.
@@ -35,6 +35,15 @@ The `Instance` returned by `create_instance()` also exposes all instance-resourc
 methods. A `BoundAgent` exposes all profile-resource methods, including `sessions`
 and `native`; IDs need not be repeated. `agent.session` selects its active session
 after `new_session()`, `start()`, or `run()`.
+
+`Agent` accepts annotated Python functions or `@tool` objects. `max_turns`, `toolsets`
+and `config` configure the native profile; `profile_options` and `session_options`
+remain available for the complete underlying contract. Invalid tools and duplicate
+names fail before provisioning. `agent.open_session(id)` checks instance/profile
+ownership before selecting an existing conversation. `add_tools(functions)` and
+`remove_tools(binding_id)` support a running profile without recreating its instance;
+these operations are serialized with the bound agent's runs and session selection.
+Separate handles/processes are not implicitly serialized with each other.
 
 `agent.start(prompt)` returns a turn handle without waiting. `agent.run(prompt)`
 waits for completion, failure, interruption, or a pending approval and returns
@@ -127,12 +136,25 @@ implement every capability. In particular:
 - Runtime-provider availability, profile/session action semantics, per-turn
   tools, image publication, and MCP OAuth still depend on backend/native support.
   A generated method does not repair all pre-existing server implementation gaps.
-  See the [latest verification report](verification-2026-09-25.md) for repaired
+  See the [latest verification report](verification-2026-09-30.md) for repaired
   adapters and explicitly unsupported overrides.
 - Live Docker, Kubernetes, Linux-process and PostgreSQL checks are recorded in
-  the [latest verification report](verification-2026-09-25.md). Earlier evidence
-  remains in `local-verification.md`. The actual local-model tool-execution
-  check failed; passing lifecycle checks do not certify a successful model turn.
+  the [latest verification report](verification-2026-09-30.md). Real local-model
+  execution now reaches the Python callback, including dynamically added tools.
+  Earlier failures remain in the historical reports; lifecycle checks alone
+  are still not evidence of successful reasoning or arbitrary model compatibility.
+
+Pool leases are reserved atomically in SQLite/PostgreSQL, with expiry and protection
+against an old lease releasing a newer one. Required labels and existing-profile
+scope are enforced. Pool size changes and deletion must use one controller; no
+multi-writer reconciler or automatic idle-eviction certification is claimed.
+StatefulSet mapping, idle TTL automation and custom strategies are rejected explicitly.
+Round-robin, sticky-key, random and stored-session/busy-turn ordering are implemented;
+the latter are registry snapshots, not live cluster-utilization metrics.
+
+Build the Kubernetes bridge from the same checkout and explicitly select its image
+through `EDITH_RUNTIME_BRIDGE_IMAGE`. The old v0.3.1 deployment example/bridge image
+is not the new duplex implementation, and this source push does not publish a new image.
 
 The existing runnable examples were left unchanged during this convenience-layer
 expansion so application-specific examples can be authored independently.

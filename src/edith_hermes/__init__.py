@@ -1,5 +1,21 @@
 """Public EDITH Hermes SDK API."""
 
+from .agent import (
+    Agent,
+    BoundAgent,
+    Docker,
+    External,
+    Hermes,
+    Instance,
+    Kubernetes,
+    Model,
+    Process,
+    RunResult,
+    Runtime,
+    Tool,
+    ToolHost,
+    tool,
+)
 from .client import AsyncEdithHermes, EdithHermes
 from .errors import (
     AuthenticationError,
@@ -12,6 +28,20 @@ from .errors import (
 from .transport import EmbeddedDriver
 
 __all__ = [
+    "Agent",
+    "BoundAgent",
+    "Docker",
+    "External",
+    "Hermes",
+    "Instance",
+    "Kubernetes",
+    "Model",
+    "Process",
+    "RunResult",
+    "Runtime",
+    "Tool",
+    "ToolHost",
+    "tool",
     "AsyncEdithHermes",
     "AuthenticationError",
     "ConflictError",
@@ -23,4 +53,4 @@ __all__ = [
     "ValidationError",
 ]
 
-__version__ = "0.3.1"
+__version__ = "0.4.0"

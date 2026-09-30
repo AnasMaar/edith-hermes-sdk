@@ -1,5 +1,11 @@
 # Hermes Kubernetes runtime pool
 
+This StatefulSet is a **reference layout**, not the current pool API reconciler.
+The implemented provider creates one Deployment/PVC/Service/Secret per instance;
+pool requests for StatefulSet mapping are explicitly rejected. A future controller
+would be needed to implement the replica ownership described below. Profiles are
+configuration homes, not an OS security boundary between untrusted users.
+
 This reference deployment models a pool as a Kubernetes `StatefulSet`:
 
 ```text

@@ -18,9 +18,12 @@ RUN pip install --no-cache-dir ".[control-plane]"
 
 ENV PYTHONPATH=/app/services/control_plane \
     HOME=/home/edith \
-    DOCKER_CONFIG=/home/edith/.docker
-RUN mkdir -p /home/edith/.docker /var/run/secrets/edith-build /var/run/secrets/edith-callback && \
-    chown -R 10000:10000 /home/edith /var/run/secrets/edith-build /var/run/secrets/edith-callback
+    DOCKER_CONFIG=/home/edith/.docker \
+    EDITH_DATABASE_URL=sqlite+aiosqlite:////var/lib/edith/edith-hermes.db \
+    EDITH_LOCAL_RUNTIME_ROOT=/var/lib/edith/runtimes \
+    EDITH_SECRET_DIRECTORY=/var/lib/edith/secrets
+RUN mkdir -p /home/edith/.docker /var/lib/edith /var/run/secrets/edith-build /var/run/secrets/edith-callback && \
+    chown -R 10000:10000 /home/edith /var/lib/edith /var/run/secrets/edith-build /var/run/secrets/edith-callback
 USER 10000:10000
 EXPOSE 8080
 CMD ["uvicorn", "edith_hermes_control_plane.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8080", "--proxy-headers"]

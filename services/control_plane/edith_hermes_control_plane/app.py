@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from edith_hermes.generated.operations import OPERATIONS
@@ -20,8 +20,9 @@ from edith_hermes.generated.operations import OPERATIONS
 from .auth import Authenticator, Identity
 from .config import Settings
 from .database import Database
+from .duplex import relay
 from .engine import Problem, ProductionEngine
-from .gateway import HermesGateway
+from .gateway import HermesGateway, HermesGatewayError
 from .providers import (
     BuildKitProvider,
     DockerProvider,
@@ -91,7 +92,7 @@ def create_app(
 
     app = FastAPI(
         title="EDITH Hermes Production Control Plane",
-        version="0.3.1",
+        version="0.4.0",
         lifespan=lifespan,
     )
     app.state.database = database
@@ -99,9 +100,32 @@ def create_app(
     app.state.worker = worker
     app.state.runtimes = runtimes
 
+    @app.websocket("/v1/instances/{instance_id}/profiles/{profile_id}/gateway")
+    async def native_gateway(websocket: WebSocket, instance_id: str, profile_id: str) -> None:
+        try:
+            identity = await authenticate.from_headers(websocket.headers)
+            profile = await engine._profile_name(instance_id, profile_id, identity)
+            instance = await engine._instance(instance_id, identity)
+            if instance.get("status") != "ready":
+                await websocket.close(code=1013)
+                return
+        except (HTTPException, Problem):
+            await websocket.close(code=1008)
+            return
+        try:
+            upstream = await gateway._connect(instance["connection"])
+        except Exception:
+            await websocket.close(code=1011)
+            return
+        try:
+            await websocket.accept()
+            await relay(websocket, upstream, profile=profile)
+        finally:
+            await upstream.close()
+
     @app.get("/health/live")
     async def live() -> dict[str, Any]:
-        return {"ok": True, "version": "0.3.1"}
+        return {"ok": True, "version": "0.4.0"}
 
     @app.get("/health/ready")
     async def ready() -> dict[str, Any]:
@@ -137,21 +161,32 @@ def create_app(
         request: Request, arguments: dict[str, Any], identity: Identity
     ) -> StreamingResponse:
         instance = await engine.required("instance", arguments["instanceId"], identity)
+        session = await engine.required("session", arguments["sessionId"], identity)
+        if (
+            session["instanceId"] != arguments["instanceId"]
+            or session["profileId"] != arguments["profileId"]
+        ):
+            raise Problem(404, "Not found", "Session does not belong to this profile")
         transport = next(
-            (
-                item
-                for item in instance["connection"]["transports"]
-                if item["kind"] == "sse"
-            ),
+            (item for item in instance["connection"]["transports"] if item["kind"] == "sse"),
             None,
         )
-        query = {"sessionId": arguments["sessionId"]}
+        native_session_id = str(session.get("nativeSessionId") or session["id"])
+        query = {"sessionId": native_session_id}
+        auth = instance["connection"].get("authorization") or {}
+        headers = (
+            {"Authorization": "Bearer " + auth["token"]}
+            if auth.get("scheme") == "bearer" and auth.get("token")
+            else {}
+        )
 
         async def events() -> AsyncIterator[bytes]:
             if transport is not None:
                 async with (
                     httpx.AsyncClient(timeout=None) as client,
-                    client.stream("GET", transport["url"], params=query) as response,
+                    client.stream(
+                        "GET", transport["url"], params=query, headers=headers
+                    ) as response,
                 ):
                     response.raise_for_status()
                     async for chunk in response.aiter_bytes():
@@ -159,9 +194,7 @@ def create_app(
                             return
                         yield chunk
                 return
-            async for chunk in gateway.events(
-                instance["connection"], str(arguments["sessionId"])
-            ):
+            async for chunk in gateway.events(instance["connection"], native_session_id):
                 if await request.is_disconnected():
                     return
                 yield chunk
@@ -270,6 +303,27 @@ def create_app(
                     status_code=problem.status,
                     media_type="application/problem+json",
                 )
+            except HermesGatewayError as exc:
+                code = exc.error.get("code")
+                status = (
+                    422
+                    if isinstance(code, int) and (4000 <= code < 5000 or code in {-32601, -32602})
+                    else 502
+                )
+                payload = {
+                    "type": "about:blank",
+                    "title": "Native Hermes rejected the request",
+                    "status": status,
+                    "detail": str(exc),
+                    "nativeError": exc.error,
+                }
+                if idempotency_key is not None and idempotency_reserved:
+                    await database.complete_idempotency(
+                        operation["operation_id"], idempotency_key, identity.owner, status, payload
+                    )
+                return JSONResponse(
+                    payload, status_code=status, media_type="application/problem+json"
+                )
             except httpx.HTTPError as exc:
                 payload = {
                     "type": "about:blank",
@@ -356,14 +410,22 @@ def create_app(
             result = {
                 "protocolVersion": "2025-06-18",
                 "capabilities": {"tools": {"listChanged": False}},
-                "serverInfo": {"name": "edith-hermes-tool-bridge", "version": "0.3.1"},
+                "serverInfo": {"name": "edith-hermes-tool-bridge", "version": "0.4.0"},
             }
         elif method == "tools/list":
-            result = {"tools": bundle.get("tools") or []}
+            result = {
+                "tools": [
+                    t
+                    for t in bundle.get("tools") or []
+                    if binding.get("enabledTools") is None or t["name"] in binding["enabledTools"]
+                ]
+            }
         elif method == "tools/call":
             params = message.get("params") or {}
             tool_name = params.get("name")
             allowed = {item["name"] for item in bundle.get("tools") or []}
+            if binding.get("enabledTools") is not None:
+                allowed &= set(binding["enabledTools"])
             if tool_name not in allowed:
                 return JSONResponse(
                     {
@@ -393,6 +455,12 @@ def create_app(
                 )
                 response.raise_for_status()
                 result = response.json()
+                result["content"] = [
+                    {"type": "text", "text": json.dumps(part.get("data"))}
+                    if part.get("type") == "json"
+                    else part
+                    for part in result.get("content", [])
+                ]
         elif method == "notifications/initialized":
             return JSONResponse({}, status_code=202)
         else:

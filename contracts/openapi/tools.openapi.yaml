@@ -218,7 +218,15 @@ paths:
             schema:
               type: object
               required: [type]
-              properties: { type: { enum: [test, reload, begin_oauth] } }
+              properties:
+                type: { enum: [test, reload, begin_oauth, poll_oauth, complete_oauth, cancel_oauth] }
+                bindingId: { type: string, description: "Select a profile binding when the server has multiple bindings." }
+                sessionId: { type: string, description: "OAuth flow ID returned by begin_oauth; required for poll/complete/cancel." }
+                clientRedirectUri: { type: string, format: uri }
+                code: { type: string }
+                state: { type: string }
+                error: { type: string }
+                issuer: { type: string }
       responses:
         '200':
           description: Test or OAuth initiation result.
@@ -355,6 +363,10 @@ components:
           properties:
             id: { type: string }
             status: { enum: [pending, active, degraded, failed] }
+            nativeServerName:
+              type: string
+              readOnly: true
+              description: Native MCP registration name; retained for existing bindings and kept short for tool discovery.
             nativeState:
               type: object
               description: Result of MCP registration/reload/tools.configure reconciliation.
@@ -381,6 +393,7 @@ components:
         args: { type: array, items: { type: string } }
         url: { type: string, format: uri }
         headers: { type: object, additionalProperties: { type: string } }
+        auth: { enum: [oauth], description: "Use native Hermes MCP OAuth authentication." }
         environment: { type: object, additionalProperties: { type: string } }
         secretRefs: { type: object, additionalProperties: { type: string } }
       allOf:

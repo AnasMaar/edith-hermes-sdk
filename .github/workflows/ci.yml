@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, "verification/**"]
   pull_request:
 
 jobs:
@@ -63,4 +63,20 @@ jobs:
           context: .
           file: ${{ matrix.file }}
           push: false
+          load: true
           tags: edith-hermes-${{ matrix.name }}:ci
+      - name: Check default non-root control-plane startup
+        if: matrix.name == 'control-plane'
+        run: docker run --rm -i -e EDITH_RUNTIME_PROVIDERS=external --entrypoint python edith-hermes-control-plane:ci - < scripts/verify_control_plane_image.py
+
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+          enable-cache: true
+      - run: uv sync --frozen --group dev
+      - run: uv run python scripts/verify_postgres_live.py

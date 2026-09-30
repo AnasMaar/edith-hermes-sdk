@@ -30,12 +30,12 @@ def _token_map() -> dict[str, dict[str, str]]:
 def create_app(database: str | Path | None = None) -> FastAPI:
     database_path = database or os.getenv("EDITH_MOCK_DATABASE", "mock-state.db")
     engine = MockEngine(SQLiteStateStore(database_path))
-    app = FastAPI(title="EDITH Hermes Mock Server", version="0.3.1")
+    app = FastAPI(title="EDITH Hermes Mock Server", version="0.4.0")
     app.state.engine = engine
 
     @app.get("/health")
     async def health() -> dict[str, Any]:
-        return {"ok": True, "version": "0.3.1"}
+        return {"ok": True, "version": "0.4.0"}
 
     async def identity(request: Request) -> tuple[str, str]:
         authorization = request.headers.get("authorization", "")

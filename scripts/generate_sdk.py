@@ -93,7 +93,9 @@ def openapi_operations(path: Path, namespace: str) -> list[dict[str, Any]]:
     return operations
 
 
-def render_operations(all_operations: list[dict[str, Any]], rpc_methods: list[str]) -> str:
+def render_operations(
+    all_operations: list[dict[str, Any]], rpc_methods: list[str], profile_methods: list[str]
+) -> str:
     payload = pprint.pformat(all_operations, sort_dicts=True, width=100)
     rpc_payload = pprint.pformat(rpc_methods, sort_dicts=False, width=100)
     return (
@@ -102,6 +104,7 @@ def render_operations(all_operations: list[dict[str, Any]], rpc_methods: list[st
         f"OPERATIONS = {payload}\n\n"
         "BY_ID = {item['operation_id']: item for item in OPERATIONS}\n\n"
         f"HERMES_RPC_METHODS = {rpc_payload}\n"
+        f"\nPROFILE_RPC_METHODS = {profile_methods!r}\n"
     )
 
 
@@ -194,6 +197,8 @@ def render_namespaces(grouped: dict[str, tuple[str, list[dict[str, Any]]]], rpc:
 
 
 def main() -> None:
+    from generate_resources import generate
+
     OUTPUT.mkdir(parents=True, exist_ok=True)
     all_operations: list[dict[str, Any]] = []
     grouped: dict[str, tuple[str, list[dict[str, Any]]]] = {}
@@ -216,12 +221,23 @@ def main() -> None:
 
     openrpc = json.loads(OPENRPC_PATH.read_text(encoding="utf-8"))
     rpc_methods = [method["name"] for method in openrpc.get("methods", [])]
+    profile_methods = [
+        m["name"]
+        for m in openrpc["methods"]
+        if "profile"
+        in openrpc["components"]["schemas"][m["params"][0]["schema"]["$ref"].split("/")[-1]].get(
+            "properties", {}
+        )
+    ]
     (OUTPUT / "operations.py").write_text(
-        render_operations(all_operations, rpc_methods), encoding="utf-8", newline="\n"
+        render_operations(all_operations, rpc_methods, profile_methods),
+        encoding="utf-8",
+        newline="\n",
     )
     (OUTPUT / "namespaces.py").write_text(
         render_namespaces(grouped, rpc_methods), encoding="utf-8", newline="\n"
     )
+    generate(ROOT, all_operations)
     print(f"Generated {len(all_operations)} HTTP operations and {len(rpc_methods)} RPC methods")
 
 

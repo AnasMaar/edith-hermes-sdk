@@ -10,6 +10,7 @@ from typing import Any
 from .config import Settings
 from .database import Database, DurableJob
 from .gateway import HermesGateway
+from .profiles import configure, create_params
 from .providers import BuildKitProvider, RuntimeRegistry
 from .providers.buildkit import BuildCancelled
 
@@ -44,7 +45,9 @@ class JobWorker:
 
     async def stop(self) -> None:
         self._stop.set()
-        for task in self._tasks:
+        # Let idle claim transactions finish before cancellation closes SQLite connections.
+        _, pending = await asyncio.wait(self._tasks, timeout=1) if self._tasks else (set(), set())
+        for task in pending:
             task.cancel()
         await asyncio.gather(*self._tasks, return_exceptions=True)
 
@@ -172,17 +175,22 @@ class JobWorker:
             "updatedAt": now(),
         }
         await self.database.put("instance", instance_id, owner, instance)
-        artifact = await provider.provision(
-            instance_id,
-            image_reference,
-            runtime,
-            request.get("labels") or {},
-        )
+        try:
+            artifact = await provider.provision(
+                instance_id,
+                image_reference,
+                runtime,
+                request.get("labels") or {},
+            )
+        except Exception:
+            instance.update(status="failed", health={"ready": False, "checkedAt": now()})
+            await self.database.put("instance", instance_id, owner, instance)
+            raise
         instance.update(
-            status="ready",
+            status="provisioning",
             runtimeIdentity=artifact.identity,
             connection=artifact.connection,
-            health={"ready": True, "checkedAt": now()},
+            health={"ready": False, "checkedAt": now()},
             updatedAt=now(),
         )
         await self.database.put("instance", instance_id, owner, instance)
@@ -190,7 +198,20 @@ class JobWorker:
             image["activeInstanceReferences"] = int(image.get("activeInstanceReferences", 0)) + 1
             await self.database.put("image", image_id, owner, image)
         profile_data = (request.get("bootstrap") or {}).get("profile") or {"name": "default"}
-        native = await self.gateway.invoke(artifact.connection, "profiles.create", profile_data)
+        try:
+            native = (
+                await self.gateway.invoke(
+                    artifact.connection, "profiles.create", create_params(profile_data)
+                )
+                if profile_data["name"] != "default"
+                else {"result": {"path": "/opt/data"}}
+            )
+            await configure(self.gateway, artifact.connection, profile_data)
+        except Exception:
+            await provider.delete(artifact.identity, retain_data=False)
+            instance.update(status="failed", health={"ready": False, "checkedAt": now()})
+            await self.database.put("instance", instance_id, owner, instance)
+            raise
         native_result = native.get("result") or {}
         profile_id = "profile_" + uuid.uuid4().hex
         profile = {
@@ -203,6 +224,8 @@ class JobWorker:
             "createdAt": now(),
         }
         await self.database.put("profile", profile_id, owner, profile)
+        instance.update(status="ready", health={"ready": True, "checkedAt": now()})
+        await self.database.put("instance", instance_id, owner, instance)
         return {
             **({"managedImageId": image_id} if image_id else {}),
             "instanceId": instance_id,
