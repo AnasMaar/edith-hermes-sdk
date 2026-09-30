@@ -172,6 +172,46 @@ class Database:
             await session.delete(record)
             return True
 
+    async def save_provider_login(
+        self, resource_id: str, owner: tuple[str, str], payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Compare-and-set login state: a slow poll cannot resurrect a terminal flow.
+
+        Works across control-plane workers/backends without keeping OAuth state
+        in process memory. The initial row is created before its ID is exposed.
+        """
+        terminal = {"approved", "denied", "expired", "cancelled", "failed"}
+        for _ in range(10):
+            async with self.sessions.begin() as session:
+                record = await session.get(Resource, ("provider_login", resource_id, *owner))
+                if record is None:
+                    session.add(
+                        Resource(
+                            kind="provider_login",
+                            resource_id=resource_id,
+                            tenant_id=owner[0],
+                            subject_id=owner[1],
+                            payload=payload,
+                        )
+                    )
+                    return payload
+                if record.payload["status"] in terminal:
+                    return dict(record.payload)
+                result = await session.execute(
+                    update(Resource)
+                    .where(
+                        Resource.kind == "provider_login",
+                        Resource.resource_id == resource_id,
+                        Resource.tenant_id == owner[0],
+                        Resource.subject_id == owner[1],
+                        Resource.version == record.version,
+                    )
+                    .values(payload=payload, version=record.version + 1, updated_at=utcnow())
+                )
+                if cast(CursorResult[Any], result).rowcount == 1:
+                    return payload
+        raise RuntimeError("Concurrent provider login updates did not settle")
+
     async def delete_runtime_tree(
         self,
         owner: tuple[str, str],
@@ -201,6 +241,7 @@ class Database:
                                 "tool_binding",
                                 "lease",
                                 "lease_slot",
+                                "provider_login",
                             ]
                         ),
                     )
@@ -239,6 +280,10 @@ class Database:
                     or row.kind == "lease_slot"
                     and whole_instance
                     and row.resource_id == instance_id
+                    or row.kind == "provider_login"
+                    and session_id is None
+                    and value.get("instanceId") == instance_id
+                    and (profile_id is None or value.get("profileId") == profile_id)
                 )
                 if remove:
                     await transaction.delete(row)

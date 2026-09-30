@@ -1,0 +1,224 @@
+openapi: 3.1.0
+info:
+  title: Hermes SDK Provider Authentication API
+  version: 0.1.0
+  description: |
+    SDK-owned, owner/instance/profile-scoped facade over Hermes dashboard provider OAuth
+    and credential-pool endpoints. Access tokens, refresh tokens, device secrets and token
+    previews never cross this API or enter the control-plane registry. Hermes owns token
+    exchange, storage and refresh. User consent is always required. Provider discovery is
+    dynamic; external CLI-only providers are discoverable but cannot start dashboard login.
+    Login sessions are process-local in Hermes: restarting Hermes expires pending logins.
+    Authenticated means credentials are present, not that an upstream service accepted them.
+    Revocation is reported only when Hermes records it; otherwise validity is unknown.
+servers:
+  - url: https://{controlPlaneHost}
+    variables:
+      controlPlaneHost: { default: hermes-control.example.com }
+security:
+  - {}
+  - bearerAuth: []
+x-hermes-source:
+  revision: 16fe260aab45a524df94c8f635352fd9e6e66fe5
+  routes: hermes_cli/web_routers/oauth.py and hermes_cli/web_routers/ops.py
+paths:
+  /v1/instances/{instanceId}/profiles/{profileId}/providers:
+    parameters:
+      - { $ref: '#/components/parameters/InstanceId' }
+      - { $ref: '#/components/parameters/ProfileId' }
+    get:
+      operationId: listAuthProviders
+      responses:
+        '200':
+          description: OAuth provider catalog, flow capabilities and local credential status.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/AuthProvider' } }
+        default: { $ref: '#/components/responses/Error' }
+  /v1/instances/{instanceId}/profiles/{profileId}/providers/{providerId}:
+    parameters:
+      - { $ref: '#/components/parameters/InstanceId' }
+      - { $ref: '#/components/parameters/ProfileId' }
+      - { $ref: '#/components/parameters/ProviderId' }
+    get:
+      operationId: getAuthProvider
+      responses:
+        '200':
+          description: Provider metadata and local credential status, without secrets.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthProvider' }
+        default: { $ref: '#/components/responses/Error' }
+    delete:
+      operationId: disconnectAuthProvider
+      description: Clears Hermes-managed credentials. Does not revoke consent at the issuer or alter another application's credentials.
+      responses:
+        '200':
+          description: Whether native Hermes cleared credentials.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthMutation' }
+        default: { $ref: '#/components/responses/Error' }
+  /v1/instances/{instanceId}/profiles/{profileId}/providers/{providerId}/logins:
+    parameters:
+      - { $ref: '#/components/parameters/InstanceId' }
+      - { $ref: '#/components/parameters/ProfileId' }
+      - { $ref: '#/components/parameters/ProviderId' }
+    post:
+      operationId: startProviderLogin
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }]
+      description: Starts a supported device-code flow. External flows return 501 with provider metadata available via GET. No credentials are accepted in this request.
+      responses:
+        '201':
+          description: Instructions for the user; the SDK never grants consent automatically.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProviderLogin' }
+        default: { $ref: '#/components/responses/Error' }
+  /v1/instances/{instanceId}/profiles/{profileId}/providers/{providerId}/logins/{loginId}:
+    parameters:
+      - { $ref: '#/components/parameters/InstanceId' }
+      - { $ref: '#/components/parameters/ProfileId' }
+      - { $ref: '#/components/parameters/ProviderId' }
+      - { $ref: '#/components/parameters/LoginId' }
+    get:
+      operationId: getProviderLogin
+      responses:
+        '200':
+          description: Pending or terminal state. Missing native sessions become expired and require a new login.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProviderLogin' }
+        default: { $ref: '#/components/responses/Error' }
+    delete:
+      operationId: cancelProviderLogin
+      description: Cancels a pending login only. An approved login requires explicit provider disconnection instead.
+      responses:
+        '200':
+          description: Terminal login state.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProviderLogin' }
+        default: { $ref: '#/components/responses/Error' }
+  /v1/instances/{instanceId}/profiles/{profileId}/providers/{providerId}/accounts:
+    parameters:
+      - { $ref: '#/components/parameters/InstanceId' }
+      - { $ref: '#/components/parameters/ProfileId' }
+      - { $ref: '#/components/parameters/ProviderId' }
+    get:
+      operationId: listProviderAccounts
+      description: Native credential-pool entries, not a guaranteed list of all issuer accounts. Singleton credentials may not appear. Supports API-key providers as well as OAuth providers.
+      responses:
+        '200':
+          description: Redacted credential summaries. Validity reflects only Hermes' last observation.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/ProviderAccount' } }
+        default: { $ref: '#/components/responses/Error' }
+  /v1/instances/{instanceId}/profiles/{profileId}/providers/{providerId}/accounts/{accountIndex}:
+    parameters:
+      - { $ref: '#/components/parameters/InstanceId' }
+      - { $ref: '#/components/parameters/ProfileId' }
+      - { $ref: '#/components/parameters/ProviderId' }
+      - { $ref: '#/components/parameters/AccountIndex' }
+    delete:
+      operationId: removeProviderAccount
+      description: Native one-based pool index, not a stable account identifier. Re-list immediately before removal and serialize removals for a profile; Hermes does not provide compare-and-delete. Removal may clean/suppress the entry's native credential source.
+      responses:
+        '200':
+          description: Removed the indexed credential source.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthMutation' }
+        default: { $ref: '#/components/responses/Error' }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  parameters:
+    InstanceId: { name: instanceId, in: path, required: true, schema: { type: string, minLength: 1 } }
+    ProfileId: { name: profileId, in: path, required: true, schema: { type: string, minLength: 1 } }
+    ProviderId: { name: providerId, in: path, required: true, schema: { type: string, pattern: '^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,127}$' } }
+    LoginId: { name: loginId, in: path, required: true, schema: { type: string, minLength: 1 } }
+    AccountIndex: { name: accountIndex, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    IdempotencyKey: { name: Idempotency-Key, in: header, required: true, schema: { type: string, minLength: 8, maxLength: 255 } }
+  responses:
+    Error:
+      description: Scoped access, unsupported flow, runtime or provider failure. Native response bodies are not exposed.
+      content:
+        application/problem+json:
+          schema:
+            type: object
+            required: [title, status, detail]
+            properties:
+              title: { type: string }
+              status: { type: integer }
+              detail: { type: string }
+              retryable: { type: boolean }
+  schemas:
+    CredentialStatus:
+      type: object
+      required: [state, loggedIn, validity]
+      properties:
+        state: { type: string, enum: [authenticated, unauthenticated, expired, revoked, unknown] }
+        loggedIn: { type: boolean }
+        validity: { type: string, enum: [unknown, expired, revoked] }
+        expiresAt: { type: [string, 'null'], format: date-time }
+        hasRefreshToken: { type: boolean }
+        source: { type: [string, 'null'] }
+    AuthProvider:
+      type: object
+      required: [id, name, flow, loginSupported, disconnectSupported, status]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        flow: { type: string }
+        loginSupported: { type: boolean }
+        disconnectSupported: { type: boolean }
+        cliCommand: { type: [string, 'null'] }
+        docsUrl: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/CredentialStatus' }
+    ProviderLogin:
+      type: object
+      required: [id, instanceId, profileId, providerId, flow, status, verificationUrl, userCode, expiresAt, pollInterval, errorCode]
+      properties:
+        id: { type: string }
+        instanceId: { type: string }
+        profileId: { type: string }
+        providerId: { type: string }
+        flow: { type: string }
+        status: { type: string, enum: [pending, approved, denied, expired, cancelled, failed] }
+        verificationUrl: { type: [string, 'null'], format: uri }
+        userCode: { type: [string, 'null'] }
+        expiresAt: { type: [string, 'null'], format: date-time }
+        pollInterval: { type: number, minimum: 1 }
+        errorCode: { type: [string, 'null'], enum: [null, authorization_denied, authorization_expired, authorization_failed, runtime_session_lost, cancelled] }
+    ProviderAccount:
+      type: object
+      required: [id, index, providerId, label, authType, source, priority, requestCount, hasRefreshToken, validity]
+      properties:
+        id: { type: string }
+        index: { type: integer, minimum: 1 }
+        providerId: { type: string }
+        label: { type: string }
+        authType: { type: string }
+        source: { type: string }
+        priority: { type: integer }
+        requestCount: { type: integer }
+        hasRefreshToken: { type: boolean }
+        lastStatus: { type: [integer, 'null'] }
+        validity: { type: string, enum: [unknown, expired, revoked] }
+    AuthMutation:
+      type: object
+      required: [ok, providerId]
+      properties:
+        ok: { type: boolean }
+        providerId: { type: string }
+        count: { type: integer }

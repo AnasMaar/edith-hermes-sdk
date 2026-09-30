@@ -7,10 +7,12 @@ from contextlib import AbstractAsyncContextManager
 from typing import Any, Literal, Union
 from ..duplex import NativeConnection, connect
 from ..resources import Resource, UNSET, Unset, payload as _payload
+from ..provider_auth import ProviderResourceBase, ProviderLoginBase
 from . import types_control_plane as _types_control_plane
 from . import types_images as _types_images
 from . import types_runtime as _types_runtime
 from . import types_tools as _types_tools
+from . import types_providers as _types_providers
 from . import types_inference as _types_inference
 from . import types_native as _types_native
 
@@ -2277,6 +2279,10 @@ class ProfileResource(Resource):
     def native(self) -> NativeResource:
         return NativeResource(self._sdk, **self._scope)
 
+    @property
+    def providers(self) -> ProvidersResource:
+        return ProvidersResource(self._sdk, **self._scope)
+
     def connect(self) -> AbstractAsyncContextManager[NativeConnection]:
         return connect(self._sdk, instance_id=self._scope['instance_id'], profile_id=self._scope['profile_id'])
 
@@ -2293,6 +2299,68 @@ class ProfilesResource(Resource):
         if not profile_id:
             raise ValueError('Resource ID must not be empty')
         return ProfileResource(self._sdk, **{**self._scope, 'profile_id': profile_id})
+
+
+class ProviderResource(ProviderResourceBase):
+    async def status(self) -> _types_providers.AuthProvider:
+        return typing.cast('_types_providers.AuthProvider', await self._invoke('getAuthProvider', _payload({})))
+
+    async def disconnect(self) -> _types_providers.AuthMutation:
+        return typing.cast('_types_providers.AuthMutation', await self._invoke('disconnectAuthProvider', _payload({})))
+
+    @property
+    def logins(self) -> ProviderLoginsResource:
+        return ProviderLoginsResource(self._sdk, **self._scope)
+
+    @property
+    def accounts(self) -> ProviderAccountsResource:
+        return ProviderAccountsResource(self._sdk, **self._scope)
+
+    async def login(self, *, open_browser: bool = False, idempotency_key: str | Unset = UNSET) -> ProviderLoginResource:
+        return typing.cast('ProviderLoginResource', await self._login(open_browser=open_browser, idempotency_key=idempotency_key))
+
+
+class ProviderAccountResource(Resource):
+    async def remove(self) -> _types_providers.AuthMutation:
+        return typing.cast('_types_providers.AuthMutation', await self._invoke('removeProviderAccount', _payload({})))
+
+
+class ProviderAccountsResource(Resource):
+    async def list(self) -> _types_providers.listProviderAccountsResult:
+        return typing.cast('_types_providers.listProviderAccountsResult', await self._invoke('listProviderAccounts', _payload({})))
+
+    def __call__(self, account_index: int) -> ProviderAccountResource:
+        if account_index <= 0:
+            raise ValueError('Resource ID must not be empty')
+        return ProviderAccountResource(self._sdk, **{**self._scope, 'account_index': str(account_index)})
+
+
+class ProviderLoginResource(ProviderLoginBase):
+    async def get(self) -> _types_providers.ProviderLogin:
+        return self._remember(await self._invoke('getProviderLogin', _payload({})))
+
+    async def cancel(self) -> _types_providers.ProviderLogin:
+        return self._remember(await self._invoke('cancelProviderLogin', _payload({})))
+
+
+class ProviderLoginsResource(Resource):
+    async def start(self, *, idempotency_key: str | Unset = UNSET) -> _types_providers.ProviderLogin:
+        return typing.cast('_types_providers.ProviderLogin', await self._invoke('startProviderLogin', _payload({'idempotency_key': idempotency_key})))
+
+    def __call__(self, login_id: str) -> ProviderLoginResource:
+        if not login_id:
+            raise ValueError('Resource ID must not be empty')
+        return ProviderLoginResource(self._sdk, **{**self._scope, 'login_id': login_id})
+
+
+class ProvidersResource(Resource):
+    async def list(self) -> _types_providers.listAuthProvidersResult:
+        return typing.cast('_types_providers.listAuthProvidersResult', await self._invoke('listAuthProviders', _payload({})))
+
+    def __call__(self, provider_id: str) -> ProviderResource:
+        if not provider_id:
+            raise ValueError('Resource ID must not be empty')
+        return ProviderResource(self._sdk, **{**self._scope, 'provider_id': provider_id})
 
 
 class RecipeResource(Resource):

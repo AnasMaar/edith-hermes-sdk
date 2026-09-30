@@ -51,6 +51,76 @@ class HermesGateway:
         # credential-bearing descriptor out of the cache key's representation.
         return hashlib.sha256(json.dumps(connection, sort_keys=True).encode()).hexdigest()
 
+    @staticmethod
+    def _dashboard_base(connection: dict[str, Any]) -> str:
+        transport = next(t for t in connection["transports"] if t["kind"] == "websocket")
+        parsed = urlsplit(str(transport["url"]))
+        if not parsed.path.endswith("/api/ws") or parsed.scheme not in {"ws", "wss"}:
+            raise ValueError("Provider authentication requires a native /api/ws transport")
+        return urlunsplit(
+            (
+                "https" if parsed.scheme == "wss" else "http",
+                parsed.netloc,
+                parsed.path.removesuffix("/api/ws"),
+                "",
+                "",
+            )
+        )
+
+    def _dashboard_client(self, connection: dict[str, Any]) -> httpx.AsyncClient:
+        key = self._connection_key(connection)
+        login = self._dashboard_clients.get(key)
+        if login is None:
+            login = httpx.AsyncClient(timeout=30)
+            self._dashboard_clients[key] = login
+        return login
+
+    async def dashboard_request(
+        self, connection: dict[str, Any], method: str, path: str, *, profile: str
+    ) -> httpx.Response:
+        """Access provider endpoints only, preserving runtime credential custody.
+
+        HTTP transports are runtime bridges; their allowlisted /dashboard proxy
+        delegates to native Hermes. WS transports use the same native dashboard
+        origin and profile query, including reverse-proxy path prefixes.
+        """
+        if not path.startswith(("/api/providers/oauth", "/api/credentials/pool")):
+            raise ValueError("Only provider authentication endpoints are allowed")
+        auth = connection.get("authorization") or {}
+        headers = (
+            {"Authorization": "Bearer " + auth["token"]}
+            if (auth.get("scheme") == "bearer" and auth.get("token"))
+            else {}
+        )
+        transport = next((t for t in connection["transports"] if t["kind"] == "http"), None)
+        if transport:
+            return await self.client.request(
+                method,
+                transport["url"].rstrip("/") + "/dashboard" + path,
+                params={"profile": profile},
+                headers=headers,
+            )
+        base = self._dashboard_base(connection)
+        if auth.get("scheme") != "dashboard_password":
+            return await self.client.request(
+                method, base + path, params={"profile": profile}, headers=headers
+            )
+        async with self._login_lock:
+            login = self._dashboard_client(connection)
+            response = await login.request(method, base + path, params={"profile": profile})
+            if response.status_code in {401, 403, 302, 303, 307}:
+                signed_in = await login.post(
+                    base + "/auth/password-login",
+                    json={
+                        "provider": "basic",
+                        "username": auth["username"],
+                        "password": auth["password"],
+                    },
+                )
+                signed_in.raise_for_status()
+                response = await login.request(method, base + path, params={"profile": profile})
+            return response
+
     async def forget(self, connection: dict[str, Any]) -> None:
         pool = self._rpc_pools.pop(self._connection_key(connection), None)
         if pool is not None:
@@ -147,17 +217,11 @@ class HermesGateway:
         authorization = connection.get("authorization") or {}
         if authorization.get("scheme") == "dashboard_password":
             parsed = urlsplit(url)
-            base = urlunsplit(
-                ("https" if parsed.scheme == "wss" else "http", parsed.netloc, "", "", "")
-            )
+            base = self._dashboard_base(connection)
             # Separate jars by instance AND credentials: neither localhost ports
             # nor changes of authenticated identity may reuse another login.
-            key = self._connection_key(connection)
             async with self._login_lock:
-                login = self._dashboard_clients.get(key)
-                if login is None:
-                    login = httpx.AsyncClient(timeout=30)
-                    self._dashboard_clients[key] = login
+                login = self._dashboard_client(connection)
                 response = await login.post(base + "/api/auth/ws-ticket")
                 if response.status_code in {401, 403, 302, 303, 307}:
                     response = await login.post(
@@ -179,7 +243,10 @@ class HermesGateway:
         websocket = await websockets.connect(url, open_timeout=10, max_size=16 * 1024 * 1024)
         try:
             first = json.loads(await asyncio.wait_for(websocket.recv(), timeout=10))
-            if first.get("method") != "event" or first.get("params", {}).get("type") != "gateway.ready":
+            if (
+                first.get("method") != "event"
+                or first.get("params", {}).get("type") != "gateway.ready"
+            ):
                 raise HermesGatewayError("Hermes gateway did not emit gateway.ready")
         except BaseException:
             with suppress(Exception):

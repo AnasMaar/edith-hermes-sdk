@@ -71,6 +71,14 @@ async def main() -> None:
         assert sum(renewed) == 1
         await db.release_lease_slot("test", owner, "expired")
         assert not await db.reserve_lease_slot("test", owner, "not-released", expires)
+        login = {"id": "login-test", "instanceId": "test", "profileId": "adam", "status": "pending"}
+        await db.save_provider_login("login-test", owner, login)
+        terminal = {**login, "status": "cancelled"}
+        await db.save_provider_login("login-test", owner, terminal)
+        stale_polls = await asyncio.gather(
+            *(db.save_provider_login("login-test", owner, login) for _ in range(8))
+        )
+        assert all(row["status"] == "cancelled" for row in stale_polls)
         await db.close()
         db = Database(f"postgresql+asyncpg://postgres:{password}@127.0.0.1:{port}/postgres")
         assert (await db.get("instance", "test", owner))["status"] == "ready"
@@ -84,6 +92,7 @@ async def main() -> None:
                     "exclusive_job_claim": True,
                     "exclusive_lease_claim_and_safe_expiry": True,
                     "reconnect_persistence": True,
+                    "provider_login_terminal_state_protected": True,
                 }
             )
         )

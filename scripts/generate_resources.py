@@ -80,6 +80,14 @@ ROUTES = {
     "executeToolCall": ("Tools", "call"),
     "createChatCompletion": ("Inference", "chat"),
     "createCompletion": ("Inference", "complete"),
+    "listAuthProviders": ("Providers", "list"),
+    "getAuthProvider": ("Provider", "status"),
+    "disconnectAuthProvider": ("Provider", "disconnect"),
+    "startProviderLogin": ("ProviderLogins", "start"),
+    "getProviderLogin": ("ProviderLogin", "get"),
+    "cancelProviderLogin": ("ProviderLogin", "cancel"),
+    "listProviderAccounts": ("ProviderAccounts", "list"),
+    "removeProviderAccount": ("ProviderAccount", "remove"),
 }
 CHILDREN = {
     "Root": {
@@ -91,7 +99,8 @@ CHILDREN = {
         "inference": "Inference",
     },
     "Instance": {"profiles": "Profiles"},
-    "Profile": {"sessions": "Sessions", "native": "Native"},
+    "Profile": {"sessions": "Sessions", "native": "Native", "providers": "Providers"},
+    "Provider": {"logins": "ProviderLogins", "accounts": "ProviderAccounts"},
     "Session": {"turns": "Turns"},
     "Pool": {"leases": "Leases"},
     "Images": {"recipes": "Recipes", "builds": "Builds"},
@@ -111,6 +120,9 @@ COLLECTIONS = {
     "Bundles": ("Bundle", "bundle_id"),
     "Bindings": ("Binding", "binding_id"),
     "McpServers": ("McpServer", "server_id"),
+    "Providers": ("Provider", "provider_id"),
+    "ProviderLogins": ("ProviderLogin", "login_id"),
+    "ProviderAccounts": ("ProviderAccount", "account_index"),
 }
 
 
@@ -307,9 +319,11 @@ def generate(root: Path, operations: list[dict[str, Any]]) -> None:
             lines = [f"    async def {method}({signature}) -> {response_type}:"]
             lines.extend(setup)
             call = f"await self._invoke({op_id!r}, _payload({dict_code(values)}))"
+            if cls == "ProviderLogin":
+                call = f"self._remember({call})"
             lines.append(
                 f"        return {call}"
-                if response_type == "Any"
+                if response_type == "Any" or cls == "ProviderLogin"
                 else f"        return typing.cast({response_type!r}, {call})"
             )
         classes[cls].extend(lines + [""])
@@ -357,12 +371,14 @@ def generate(root: Path, operations: list[dict[str, Any]]) -> None:
                 ]
             )
     for cls, (child, key) in COLLECTIONS.items():
+        key_type = "int" if key == "account_index" else "str"
+        scope_value = f"str({key})" if key_type == "int" else key
         classes[cls].extend(
             [
-                f"    def __call__(self, {key}: str) -> {child}Resource:",
-                f"        if not {key}:",
+                f"    def __call__(self, {key}: {key_type}) -> {child}Resource:",
+                f"        if {key} <= 0:" if key_type == "int" else f"        if not {key}:",
                 "            raise ValueError('Resource ID must not be empty')",
-                f"        return {child}Resource(self._sdk, **{{**self._scope, {key!r}: {key}}})",
+                f"        return {child}Resource(self._sdk, **{{**self._scope, {key!r}: {scope_value}}})",
                 "",
             ]
         )
@@ -403,6 +419,13 @@ def generate(root: Path, operations: list[dict[str, Any]]) -> None:
             "",
         ]
     )
+    classes["Provider"].extend(
+        [
+            "    async def login(self, *, open_browser: bool = False, idempotency_key: str | Unset = UNSET) -> ProviderLoginResource:",
+            "        return typing.cast('ProviderLoginResource', await self._login(open_browser=open_browser, idempotency_key=idempotency_key))",
+            "",
+        ]
+    )
     header = '''"""Generated typed convenience resources. Do not edit; run scripts/generate_sdk.py."""
 from __future__ import annotations
 import builtins
@@ -412,10 +435,12 @@ from contextlib import AbstractAsyncContextManager
 from typing import Any, Literal, Union
 from ..duplex import NativeConnection, connect
 from ..resources import Resource, UNSET, Unset, payload as _payload
+from ..provider_auth import ProviderResourceBase, ProviderLoginBase
 '''
     header += "\n".join(f"from . import types_{ns} as _types_{ns}" for ns in docs) + "\n\n"
+    bases = {"Provider": "ProviderResourceBase", "ProviderLogin": "ProviderLoginBase"}
     content = header + "\n".join(
-        f"class {name}Resource(Resource):\n" + "\n".join(lines) + "\n"
+        f"class {name}Resource({bases.get(name, 'Resource')}):\n" + "\n".join(lines) + "\n"
         for name, lines in sorted(classes.items())
     )
     (output / "resources.py").write_text(content.rstrip() + "\n", encoding="utf-8", newline="\n")

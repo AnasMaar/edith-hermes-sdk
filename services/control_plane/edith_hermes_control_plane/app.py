@@ -215,6 +215,14 @@ def create_app(
                     except json.JSONDecodeError:
                         body = None
                 arguments: dict[str, Any] = dict(request.path_params)
+                if operation["namespace"] == "providers" and (
+                    set(request.query_params) - set(operation.get("query_parameters", []))
+                ):
+                    raise Problem(
+                        422,
+                        "Unsupported query parameter",
+                        "Provider-auth scope is bound by the URL; query overrides are not accepted",
+                    )
                 arguments.update(request.query_params)
                 arguments["headers"] = {
                     header: request.headers.get(header)

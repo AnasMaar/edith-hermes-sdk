@@ -76,6 +76,17 @@ async def main(bridge_image: str, idle_gap: float = 0):
             )
             assert session["result"]["session_id"]
             native_sessions.append(session["result"]["session_id"])
+            catalog = await gateway.dashboard_request(
+                connection, "GET", "/api/providers/oauth", profile=name.lower()
+            )
+            catalog.raise_for_status()
+            codex = next(row for row in catalog.json()["providers"] if row["id"] == "openai-codex")
+            assert codex["flow"] == "device_code" and not codex["status"]["logged_in"]
+            accounts = await gateway.dashboard_request(
+                connection, "GET", "/api/credentials/pool", profile=name.lower()
+            )
+            accounts.raise_for_status()
+            assert accounts.json()["providers"] == []
         if idle_gap:
             await asyncio.sleep(idle_gap)
             active = await gateway.invoke(connection, "session.active_list", {})
@@ -97,6 +108,7 @@ async def main(bridge_image: str, idle_gap: float = 0):
                     "sessions": 3,
                     "unauthenticated_bridge_rejected": True,
                     "persistent_bridge_rpc": True,
+                    "provider_auth_discovery_two_profiles": True,
                     "idle_gap_seconds": idle_gap,
                 }
             ),

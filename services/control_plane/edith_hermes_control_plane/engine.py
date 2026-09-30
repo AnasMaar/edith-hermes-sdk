@@ -21,6 +21,8 @@ from .config import Settings
 from .database import Database, DurableJob
 from .gateway import HermesGateway
 from .profiles import configure, create_params
+from .provider_auth import OPERATIONS as PROVIDER_AUTH_OPERATIONS
+from .provider_auth import ProviderAuthentication
 from .providers import RuntimeRegistry
 
 
@@ -53,6 +55,7 @@ class ProductionEngine:
         self.settings = settings
         self.runtimes = runtimes
         self.gateway = gateway
+        self.provider_auth = ProviderAuthentication(self)
 
     @staticmethod
     def _id(prefix: str) -> str:
@@ -204,6 +207,9 @@ class ProductionEngine:
         body = arguments.get("body") or {}
         if isinstance(body, dict):
             self._verify_owner(body, identity)
+
+        if operation_id in PROVIDER_AUTH_OPERATIONS:
+            return await self.provider_auth.handle(operation_id, arguments, identity)
 
         if operation_id == "getControlPlaneCapabilities":
             url = self.settings.database_url

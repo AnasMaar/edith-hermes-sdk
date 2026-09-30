@@ -115,7 +115,7 @@ Closing a remote `Hermes` client closes connections, not instances or your tool 
 
 ## Completeness boundary and verification
 
-The coverage manifest exactly matches **64 HTTP operations and 219 native RPC
+The coverage manifest exactly matches **72 HTTP operations and 219 native RPC
 methods in the checked-in contracts**. Regeneration fails if an HTTP operation
 lacks a resource mapping. Tests invoke every generated operation, resolve its
 annotations on Python 3.10, traverse every native namespace, check routing and
@@ -155,6 +155,11 @@ the latter are registry snapshots, not live cluster-utilization metrics.
 Build the Kubernetes bridge from the same checkout and explicitly select its image
 through `EDITH_RUNTIME_BRIDGE_IMAGE`. The old v0.3.1 deployment example/bridge image
 is not the new duplex implementation, and this source push does not publish a new image.
+
+Model-provider authentication is now available under every profile's `providers`:
+`login = await agent.providers("openai-codex").login()`, followed by `login.wait()`.
+See [provider authentication](provider-auth.md) for the complete auth surface, credential
+custody rules, external-flow compatibility and live/protocol verification boundaries.
 
 The existing runnable examples were left unchanged during this convenience-layer
 expansion so application-specific examples can be authored independently.

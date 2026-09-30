@@ -69,6 +69,10 @@ sdk:
     kind: openapi
     path: ./openapi/tools.openapi.yaml
     sdk_namespace: tools
+  providers:
+    kind: openapi
+    path: ./openapi/providers.openapi.yaml
+    sdk_namespace: providers
 
 feature_ownership:
   native_gateway:

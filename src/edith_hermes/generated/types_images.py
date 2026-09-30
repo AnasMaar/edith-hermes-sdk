@@ -6,6 +6,7 @@ from typing_extensions import Required, TypedDict, TypeAlias
 from . import types_control_plane
 from . import types_runtime
 from . import types_tools
+from . import types_providers
 from . import types_inference
 from . import types_native
 

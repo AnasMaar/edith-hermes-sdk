@@ -24,6 +24,7 @@ NAMESPACES = {
     "images.openapi.yaml": ("images", "AsyncImagesAPI"),
     "runtime.openapi.yaml": ("runtime", "AsyncRuntimeAPI"),
     "tools.openapi.yaml": ("tools", "AsyncToolsAPI"),
+    "providers.openapi.yaml": ("providers", "AsyncProvidersAPI"),
 }
 
 

@@ -14,6 +14,7 @@ from .generated.namespaces import (
     AsyncGatewayAPI,
     AsyncImagesAPI,
     AsyncInferenceAPI,
+    AsyncProvidersAPI,
     AsyncRuntimeAPI,
     AsyncToolsAPI,
 )
@@ -31,6 +32,7 @@ class AsyncEdithHermes:
         self.tools = AsyncToolsAPI(transport)
         self.gateway = AsyncGatewayAPI(transport)
         self.inference = AsyncInferenceAPI(transport)
+        self.providers = AsyncProvidersAPI(transport)
         # Nous Portal management remains generic until its MCP contract can be vendored.
         self.cloud = _AsyncDynamicAPI(transport, "cloud")
         self._local_http: httpx.AsyncClient | None = None
@@ -176,6 +178,7 @@ class EdithHermes:
         self.gateway = _SyncNamespace(async_client.gateway, self._run)
         self.inference = _SyncNamespace(async_client.inference, self._run)
         self.cloud = _SyncNamespace(async_client.cloud, self._run)
+        self.providers = _SyncNamespace(async_client.providers, self._run)
 
     def _run(self, pending: Any) -> Any:
         try:

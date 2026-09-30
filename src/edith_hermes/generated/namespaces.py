@@ -131,6 +131,32 @@ class AsyncInferenceAPI(_AsyncAPI):
         return await self._transport.invoke(BY_ID['createCompletion'], arguments)
 
 
+class AsyncProvidersAPI(_AsyncAPI):
+    async def list_auth_providers(self, **arguments: Any) -> Any:
+        return await self._transport.invoke(BY_ID['listAuthProviders'], arguments)
+
+    async def get_auth_provider(self, **arguments: Any) -> Any:
+        return await self._transport.invoke(BY_ID['getAuthProvider'], arguments)
+
+    async def disconnect_auth_provider(self, **arguments: Any) -> Any:
+        return await self._transport.invoke(BY_ID['disconnectAuthProvider'], arguments)
+
+    async def start_provider_login(self, **arguments: Any) -> Any:
+        return await self._transport.invoke(BY_ID['startProviderLogin'], arguments)
+
+    async def get_provider_login(self, **arguments: Any) -> Any:
+        return await self._transport.invoke(BY_ID['getProviderLogin'], arguments)
+
+    async def cancel_provider_login(self, **arguments: Any) -> Any:
+        return await self._transport.invoke(BY_ID['cancelProviderLogin'], arguments)
+
+    async def list_provider_accounts(self, **arguments: Any) -> Any:
+        return await self._transport.invoke(BY_ID['listProviderAccounts'], arguments)
+
+    async def remove_provider_account(self, **arguments: Any) -> Any:
+        return await self._transport.invoke(BY_ID['removeProviderAccount'], arguments)
+
+
 class AsyncRuntimeAPI(_AsyncAPI):
     async def get_instance_runtime_capabilities(self, **arguments: Any) -> Any:
         return await self._transport.invoke(BY_ID['getInstanceRuntimeCapabilities'], arguments)

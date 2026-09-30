@@ -7,6 +7,7 @@ from . import types_control_plane
 from . import types_images
 from . import types_runtime
 from . import types_tools
+from . import types_providers
 from . import types_inference
 
 ActiveIdResult = TypedDict('ActiveIdResult', {

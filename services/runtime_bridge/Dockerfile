@@ -1,7 +1,7 @@
 FROM python:3.13-slim
 
 WORKDIR /app
-RUN pip install --no-cache-dir "fastapi>=0.115,<1" "uvicorn[standard]>=0.32,<1" "websockets>=14,<16"
+RUN pip install --no-cache-dir "fastapi>=0.115,<1" "uvicorn[standard]>=0.32,<1" "websockets>=14,<16" "httpx>=0.27,<1"
 COPY services/runtime_bridge /app/services/runtime_bridge
 COPY src/edith_hermes_rpc /app/services/runtime_bridge/edith_hermes_rpc
 ENV PYTHONPATH=/app/services/runtime_bridge

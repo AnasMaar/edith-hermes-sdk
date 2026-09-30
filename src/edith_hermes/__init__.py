@@ -25,6 +25,7 @@ from .errors import (
     RemoteError,
     ValidationError,
 )
+from .provider_auth import ProviderLoginError
 from .transport import EmbeddedDriver
 
 __all__ = [
@@ -51,6 +52,7 @@ __all__ = [
     "NotFoundError",
     "RemoteError",
     "ValidationError",
+    "ProviderLoginError",
 ]
 
 __version__ = "0.4.0"

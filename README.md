@@ -223,8 +223,9 @@ instances when untrusted users need process or container isolation.
 | Build and manage images | `hermes.images.recipes`, `hermes.images.builds`, `hermes.images` |
 | Manage tool registration | `hermes.tools.bundles`, `hermes.tools.bindings`, `hermes.tools.mcp_servers` |
 | Access native Hermes methods | `agent.native`, for example `agent.native.mcp.servers.list()` |
+| Authenticate a model provider | `agent.providers("openai-codex").login()`, `login.wait()` |
 
-The typed resource surface covers the **64 HTTP operations and 219 native RPC methods** in
+The typed resource surface covers the **72 HTTP operations and 219 native RPC methods** in
 the checked-in contracts. Native behavior follows the pinned upstream gateway contract.
 `agent.connect()` provides a persistent native connection for events and explicit server-request
 replies; [`gateway.md`](contracts/websocket/gateway.md) describes the protocol.
@@ -233,7 +234,17 @@ The original `AsyncEdithHermes` / `EdithHermes` clients remain available, includ
 `sdk.control_plane`, `sdk.runtime`, `sdk.tools`, `sdk.images`, `sdk.gateway` and `sdk.inference`.
 See the [API reference](docs/convenience-api.md) for typed signatures and extension points.
 
+Provider OAuth now has scoped login handles, verification URLs/codes, polling, cancellation,
+credential status, pool-account listing/removal and disconnect. Native Hermes keeps the tokens;
+required consent stays with the user. See [provider authentication](docs/provider-auth.md) for
+Codex/headless examples, external-provider limits and bridge upgrade requirements.
+
 ## Verification status
+
+The provider-auth update adds a **435-test suite**, scoped OAuth protocol tests, and live
+read-only provider/account discovery for Adam and Anas on Docker and the rebuilt Kubernetes
+bridge. PostgreSQL stale-poll protection was also checked live. Actual issuer sign-in/refresh
+and paid inference were not performed. See [provider-auth verification](docs/provider-auth.md#verification-2026-09-30).
 
 The [latest recovery and verification report](docs/docker-recovery-2026-09-30.md) records
 **378 passing tests on each of Python 3.10–3.13**, live Docker/Kubernetes lifecycle checks,
