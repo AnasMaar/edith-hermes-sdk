@@ -1,228 +1,264 @@
-# EDITH Hermes SDK
+<p align="center">
+  <img src="assets/branding/hermes-python-adk.svg" alt="Hermes Python ADK — pink and purple pixel lettering" width="100%">
+</p>
 
-`edith-hermes-sdk` is the Python control surface for building, provisioning, and operating
-user-owned Hermes runtimes. It supports a remote control plane and an in-process control plane
-through the same API. Version 0.3 makes infrastructure policy composable: SQLite or PostgreSQL;
-anonymous, static-token or OIDC authentication; optional scanning and signing; and external,
-process, Docker-compatible container, Kubernetes or adapter-backed cloud runtimes.
+<p align="center">
+  <strong>Build agents. Provision Hermes instances. Control them from Python.</strong>
+</p>
 
-## Install and use
+<p align="center">
+  <a href="pyproject.toml"><img src="https://img.shields.io/badge/Python-3.10%E2%80%933.13-b68bff?style=flat-square&amp;logo=python&amp;logoColor=white&amp;labelColor=251b30" alt="Python 3.10–3.13"></a>
+  <a href="docs/convenience-api.md"><img src="https://img.shields.io/badge/API-Typed-f078c6?style=flat-square&amp;labelColor=251b30" alt="Typed Python API"></a>
+  <a href="contracts/openapi"><img src="https://img.shields.io/badge/OpenAPI-3.1-dc86dc?style=flat-square&amp;labelColor=251b30" alt="OpenAPI 3.1 contracts"></a>
+  <a href=".github/workflows/ci.yml"><img src="https://img.shields.io/badge/CI-GitHub_Actions-a985ed?style=flat-square&amp;logo=githubactions&amp;logoColor=white&amp;labelColor=251b30" alt="GitHub Actions CI configuration"></a>
+  <a href="docs/verification-2026-09-25.md"><img src="https://img.shields.io/badge/Status-Unreleased-e69acc?style=flat-square&amp;labelColor=251b30" alt="Convenience API: unreleased working tree"></a>
+</p>
+
+<p align="center">
+  <a href="#quickstart">Quickstart</a> ·
+  <a href="#connect-to-an-existing-instance">Existing instances</a> ·
+  <a href="#choose-your-runtime">Runtimes</a> ·
+  <a href="#documentation">Documentation</a>
+</p>
+
+Hermes Python ADK is the agent development kit in `edith-hermes-sdk`. Define named agents,
+attach Python tools, create Hermes instances, and address a specific profile or conversation
+through a typed, asynchronous API. Run the control plane inside your Python process or connect
+to a deployed service.
+
+The package and imports remain `edith-hermes-sdk` and `edith_hermes`. This is an independent
+project built around [Nous Research's Hermes Agent](https://github.com/NousResearch/hermes-agent).
+The convenience API shown here lives in the **unreleased working tree**; install from this checkout.
+
+## Quickstart
+
+Use Python 3.10–3.13 and a running Docker-compatible engine for this example.
+From the root of this working checkout:
 
 ```bash
-uv add "edith-hermes-sdk[control-plane]"
+python -m pip install -e ".[control-plane,streaming]"
 ```
 
-```python
-from edith_hermes import AsyncEdithHermes
+Create one container with two profiles and different tools:
 
-async with AsyncEdithHermes.remote(
-    base_url="http://localhost:8080",
-    token="dev-user-1",  # omit this when the deployment uses auth_mode="none"
-) as sdk:
-    instances = await sdk.control_plane.list_instances()
+```python
+import asyncio
+
+from edith_hermes import Agent, Docker, Hermes, tool
+
+
+@tool
+def celsius_to_fahrenheit(celsius: float) -> dict[str, float]:
+    """Convert Celsius to Fahrenheit."""
+    return {"fahrenheit": celsius * 1.8 + 32}
+
+
+@tool
+def multiply(a: int, b: int) -> dict[str, int]:
+    """Multiply two integers."""
+    return {"product": a * b}
+
+
+async def main():
+    async with Hermes.local(runtime=Docker()) as hermes:
+        instance = await hermes.create_instance(
+            "personal-assistants",
+            agents=[
+                Agent("Adam", instructions="Help Adam with temperatures.",
+                      tools=[celsius_to_fahrenheit]),
+                Agent("Anas", instructions="Help Anas with calculations.",
+                      tools=[multiply]),
+            ],
+        )
+
+        adam = instance.agent("Adam")
+        session_id = await adam.new_session(title="Adam's first conversation")
+        servers = await adam.native.mcp.servers.list()
+        print(instance.id, adam.profile_id, session_id)
+        print(servers)
+
+
+asyncio.run(main())
 ```
 
-The SDK can also host the real control plane inside the calling Python process—without
-PostgreSQL, OIDC, KMS or Kubernetes:
+This provisions the instance and registers tools without needing model credentials.
+`Hermes.local()` uses SQLite metadata and starts the callback host for Python tools.
+Docker does not require Kubernetes, PostgreSQL, OIDC or KMS.
+
+Instances created in this context are deleted when it exits. Use
+`Hermes.local(runtime=Docker(), cleanup=False)` to retain them, then reconnect with
+`await hermes.open_instance(instance_id)` using the same state database. Keep the callback host
+running while agents need its Python tools.
+
+### Configure a model and run an agent
+
+Pass a `Model` to the agent when creating its profile. For an OpenAI-compatible provider:
 
 ```python
-from edith_hermes import AsyncEdithHermes
-from edith_hermes_control_plane.config import Settings
+import os
 
-settings = Settings(
-    database_url="sqlite+aiosqlite:///./hermes.db",
-    auth_mode="none",
-    enabled_runtime_providers=["container"],  # Docker/Podman-compatible API
+from edith_hermes import Agent, Model
+
+model = Model(
+    id=os.environ["HERMES_MODEL"],
+    provider="custom",
+    base_url=os.environ["HERMES_MODEL_BASE_URL"],
+    api_key=os.environ["HERMES_MODEL_API_KEY"],
 )
-
-async with await AsyncEdithHermes.local(settings=settings) as sdk:
-    capabilities = await sdk.control_plane.get_control_plane_capabilities()
-    job = await sdk.control_plane.provision_user_instance(
-        body={
-            "owner": {"tenantId": "local", "subjectId": "local-user"},
-            "name": "my-hermes",
-            "runtime": {
-                "kind": "container",
-                "image": "nousresearch/hermes-agent:latest",
-            },
-            "bootstrap": {"profile": {"name": "default"}},
-        }
-    )
-    ready = await sdk.wait_for_provisioning_job(job["id"])
+adam_config = Agent("Adam", model=model, instructions="Be concise.")
+# Supply adam_config to create_instance(..., agents=[adam_config]).
 ```
 
-See [`docs/configuration.md`](docs/configuration.md) for all provider combinations.
+The model endpoint must be reachable from the Hermes runtime. After provisioning a profile
+with a supported model, invoke it through its bound handle:
 
-For a complete local demonstration, run
-[`examples/docker_two_profiles.py`](examples/docker_two_profiles.py). It creates one real Hermes
-container, isolated `Adam` and `Anas` profiles, separate sessions, and profile-scoped callback tool
-bundles, then executes one tool from each bundle.
+```python
+adam = instance.agent("Adam")
+result = await adam.run("Explain your role and available tools.", timeout=180)
+print(result.status, result.text)
+```
 
-Start the persistent mock server with:
+`run()` waits for a result. For explicit control over a running turn:
+
+```python
+turn = await adam.start("Investigate this task.")
+await turn.steer("Focus on the Python implementation.")
+result = await turn.wait(timeout=180)
+# await turn.stop()
+```
+
+See [verification status](#verification-status) for the current local-model tool-execution failure.
+
+## Connect to an existing instance
+
+Connect to the **control-plane API**, then select an instance and its profile:
+
+```python
+import os
+
+from edith_hermes import Hermes
+
+async with Hermes.remote(
+    base_url=os.environ["HERMES_CONTROL_PLANE_URL"],
+    token=os.getenv("HERMES_CONTROL_PLANE_TOKEN"),
+) as hermes:
+    instance = await hermes.open_instance(os.environ["HERMES_INSTANCE_ID"])
+    anas = instance.agent("Anas")
+    result = await anas.run("Explain your configuration and what you can do.")
+    print(result.text)
+```
+
+The selected profile needs a configured model. The control plane may run locally or remotely;
+its URL differs from the model-provider URL and a native Hermes WebSocket endpoint.
+Closing a remote client leaves its instances running. Remote Python tools require a reachable
+`ToolHost`; see the [callback-host setup](docs/convenience-api.md#remote-python-tools).
+
+## Choose your runtime
+
+Runtime selection controls where Hermes executes. State, authentication and image policy
+are separate settings.
+
+| Python configuration | What it targets |
+| --- | --- |
+| `Docker(image="nousresearch/hermes-agent:latest")` | A dedicated Docker-compatible container |
+| `Process(executable="hermes")` | A locally installed Hermes process with its own data home |
+| `Kubernetes(image="your-hermes-image", namespace="hermes-runtimes")` | A Kubernetes workload managed by a cluster-connected control plane |
+| `External(endpoint="wss://hermes.example/api/ws")` | An existing Hermes endpoint whose lifecycle you manage separately |
+| A configured `nous_cloud` adapter | Provisioning through an application-supplied cloud adapter |
+
+Choose the provider on `Hermes.local(runtime=...)` or override it per
+`create_instance(..., runtime=...)` when the control plane enables that provider.
+For Kubernetes deployment and bridge configuration, see the
+[control-plane guide](deploy/control-plane/README.md).
+
+SQLite is the lightweight state backend; PostgreSQL is available for shared durable jobs.
+Authentication may be anonymous, static bearer tokens, or OIDC. Scanning and signing are optional
+policies. See [configuration](docs/configuration.md) for the supported combinations.
+
+## Address the exact target
+
+```text
+Hermes control plane
+  +-- instance
+  |     +-- profile (Adam / Anas / ...)
+  |           +-- session
+  |                 +-- turn
+  +-- pool --> instance leases
+  +-- images, tools, jobs
+```
+
+Profiles hold separate configuration and conversation state inside one instance. Use separate
+instances when untrusted users need process or container isolation.
+
+| Task | Python surface |
+| --- | --- |
+| Provision or reopen an instance | `hermes.create_instance(...)`, `hermes.open_instance(id)` |
+| Select a known instance/profile | `hermes.instances(id).profiles(profile_id)` |
+| Operate on a named agent | `instance.agent("Adam")` |
+| Manage conversations and turns | `agent.sessions(id).turns(turn_id)` |
+| Manage capacity and allocation | `hermes.pools`, `hermes.pools(id).leases` |
+| Build and manage images | `hermes.images.recipes`, `hermes.images.builds`, `hermes.images` |
+| Manage tool registration | `hermes.tools.bundles`, `hermes.tools.bindings`, `hermes.tools.mcp_servers` |
+| Access native Hermes methods | `agent.native`, for example `agent.native.mcp.servers.list()` |
+
+The typed resource surface covers the **64 HTTP operations and 219 native RPC methods** in
+the checked-in contracts. Native behavior follows the pinned upstream gateway contract.
+`agent.connect()` provides a persistent native connection for events and explicit server-request
+replies; [`gateway.md`](contracts/websocket/gateway.md) describes the protocol.
+
+The original `AsyncEdithHermes` / `EdithHermes` clients remain available, including
+`sdk.control_plane`, `sdk.runtime`, `sdk.tools`, `sdk.images`, `sdk.gateway` and `sdk.inference`.
+See the [API reference](docs/convenience-api.md) for typed signatures and extension points.
+
+## Verification status
+
+The [September 25 verification report](docs/verification-2026-09-25.md) records **338 passing
+tests**, live Docker and Kubernetes lifecycle checks, a real Hermes process test inside Linux,
+and PostgreSQL storage/concurrent job-claim checks. Generation coverage is separate from live
+verification of individual methods.
+
+The tested local `gemma3-tools:12b` model discovered the registered tool but emitted tool-call
+text without invoking the Python callback. End-to-end model-selected tool execution is still
+unresolved. External OAuth/OIDC/KMS, registry scanning/signing, cloud-provider deployments and
+multi-node operation have not been verified live.
+
+Current adapters support **profile-scoped** tool bindings. Per-turn/session tool isolation,
+per-session environment overrides, branching by SDK `fromTurnId`, and MCP secret-reference/native
+allow-list reconciliation are not implemented. Complete typed cloud management still needs an
+authoritative provider contract and adapter. The report gives the exact boundaries.
+
+## Documentation
+
+| Guide | Contents |
+| --- | --- |
+| [Convenience API](docs/convenience-api.md) | Resources, native methods, typing, callbacks and completeness boundaries |
+| [Configuration](docs/configuration.md) | Runtime, database, authentication, secrets and image-policy choices |
+| [Verification report](docs/verification-2026-09-25.md) | Recorded live results, fixes and outstanding issues |
+| [Local demos](docs/local-verification.md) | Docker/Kubernetes demonstrations and earlier evidence |
+| [Control-plane deployment](deploy/control-plane/README.md) | FastAPI service, workers and production blueprint |
+| [Kubernetes pools](deploy/kubernetes/README.md) | Workload layout, networking and persistent storage |
+| [Source map](contracts/sources.yaml) | Pinned upstream contracts and SDK coverage |
+| [OpenAPI contracts](contracts/openapi) | Instances/profiles/pools, runtime sessions/turns, tools and images |
+
+## Development
 
 ```bash
-docker compose -f deploy/compose.yaml up --build
+uv sync --all-extras --group dev
+uv run pytest
+uv run ruff check .
+uv run mypy src/edith_hermes
+uv run python scripts/validate_contracts.py
+uv run python scripts/generate_sdk.py
+uv build
 ```
 
-The default development identities are `dev-user-1` and `dev-user-2`. Override
-`EDITH_MOCK_TOKENS` with a JSON token-to-owner map outside local development.
+Runnable lifecycle demo: `uv run python examples/agents_docker.py --restart`.
+Opt-in live checks are in `scripts/verify_*_live.py` and `scripts/verify_live.py`;
+read their runtime requirements before running them.
 
-Deploy the real control plane using
-[`deploy/control-plane/README.md`](deploy/control-plane/README.md). The mock image is for local
-contract tests only and is never used by the production deployment.
-
-This repository defines a contract-first SDK for controlling one or many Hermes Agent runtimes.
-
-The SDK is generated from two kinds of contracts:
-
-1. **Upstream Hermes contracts** remain authoritative for native behavior. In particular, the
-   Hermes TUI/Desktop gateway OpenRPC document supplies every native JSON-RPC method, event,
-   server request, and schema.
-2. **SDK contracts** add resource-oriented interfaces that Hermes does not provide as one API:
-   instance provisioning, profiles addressed through a specific instance, pools, Kubernetes
-   placement, connection discovery, session routing, and dynamic tool attachment.
-
-Keeping both layers is intentional. Re-expressing all Hermes JSON-RPC methods as hand-written
-OpenAPI operations would create a second, lossy contract that could drift from Hermes.
-
-## Contract set
-
-| Contract | Purpose |
-| --- | --- |
-| [`contracts/sources.yaml`](contracts/sources.yaml) | Pinned upstream contracts and SDK namespace/coverage map |
-| [`contracts/openapi/images.openapi.yaml`](contracts/openapi/images.openapi.yaml) | Managed recipes, isolated builds, image verification and registry publication |
-| [`contracts/openapi/control-plane.openapi.yaml`](contracts/openapi/control-plane.openapi.yaml) | Instances, lifecycle, profiles, pools, leases, Kubernetes and connection descriptors |
-| [`contracts/openapi/runtime.openapi.yaml`](contracts/openapi/runtime.openapi.yaml) | Instance/profile-scoped sessions, turns, event streams, capability discovery and native RPC escape hatch |
-| [`contracts/openapi/tools.openapi.yaml`](contracts/openapi/tools.openapi.yaml) | Dynamic tool bundles, bindings, MCP servers and tool execution callbacks |
-
-## Target hierarchy
-
-Every stateful SDK call resolves an explicit target:
-
-```text
-instance
-└── profile
-    └── session
-        ├── turn
-        └── subagent
-```
-
-An instance is a running Hermes backend. A profile is an isolated Hermes configuration and data
-home within that backend. A session is a conversation owned by a profile. Pools contain instances
-and may allocate leases for workload routing.
-
-## Feature-complete SDK generation
-
-The generated SDK should expose:
-
-```text
-sdk.control_plane    generated from control-plane.openapi.yaml
-sdk.images           generated from images.openapi.yaml
-sdk.runtime          generated from runtime.openapi.yaml
-sdk.tools            generated from tools.openapi.yaml
-sdk.gateway          generated from upstream gateway-contract.openrpc.json
-sdk.inference        generated from the Nous inference OpenAPI document
-sdk.cloud            generated/discovered from the Nous Portal MCP server
-```
-
-`sdk.gateway` is the compatibility floor. When Hermes adds a native feature, regenerating from
-its OpenRPC document makes it visible without waiting for a new high-level REST wrapper. The
-runtime contract also exposes `POST .../rpc` for dynamic callers and older generated clients.
-
-## Dynamic tools
-
-Tool bundles are attached to an instance, profile, or session. The SDK tool bridge presents the
-bundle to Hermes as an MCP server. Hermes invokes a tool through the bridge, and the bridge calls
-the consumer's `ToolCallRequest` handler. Session-scoped bindings should use an isolated
-profile or process when strict cross-session isolation is required.
-
-Hermes does not currently accept arbitrary tool definitions inside `prompt.submit`. Therefore a
-`toolBindingId` on `SubmitTurnRequest` means “reconcile this binding first, then submit the native
-prompt.” The adapter performs the corresponding native `mcp.servers.add`, `mcp.reload`, and
-`tools.configure` flow. This keeps dynamic tools feasible without pretending the upstream prompt
-method has a parameter that it does not have.
-
-## Provisioning modes
-
-The control plane supports logical and physical isolation:
-
-- `external`: connect to an already-running Hermes endpoint.
-- `process`: launch `hermes serve` with an isolated `HERMES_HOME`.
-- `container`: launch a dedicated container.
-- `kubernetes`: create or adopt Kubernetes workload resources.
-- `nous_cloud`: provision lifecycle through the Nous Portal management surface.
-
-These modes are implemented by a runtime-provider registry. Instance updates, start/stop/restart,
-deletion, pool scaling and provisioning all route through the provider recorded in
-`runtimeIdentity`; none of those paths assumes Kubernetes.
-
-| Concern | Lightweight choice | Scale-out/hardened choice |
-| --- | --- | --- |
-| State | SQLite file or SQLite memory database | PostgreSQL |
-| Authentication | None | Static bearer or OIDC/JWKS |
-| Runtime | Existing endpoint, local process, local container | Kubernetes or cloud adapter |
-| Image scan | Disabled | Trivy |
-| Image signature | Disabled | Cosign with a file key, hardware key or KMS URI |
-
-`GET /v1/system/capabilities` (and
-`sdk.control_plane.get_control_plane_capabilities()`) reports the effective non-secret selection.
-
-## Kubernetes pool model
-
-The generic control-plane pool creates one independently addressable runtime per desired member.
-With the Kubernetes provider, each member is currently a dedicated `Deployment`, Service, Secret
-and `/opt/data` PVC. The separate static Kubernetes blueprint demonstrates a homogeneous
-`StatefulSet` topology for operators who prefer stable ordinals. Profiles live inside an instance;
-they are not Kubernetes replicas. Pool leasing selects an instance and then a profile.
-
-Use the official `nousresearch/hermes-agent` image as the upstream base. The reference derivative
-in [`deploy/image/Dockerfile`](deploy/image/Dockerfile) runs `hermes serve` directly as UID 10000.
-[`deploy/kubernetes/hermes-pool.yaml`](deploy/kubernetes/hermes-pool.yaml) supplies probes, isolated
-storage, browser shared memory, resource bounds, stable networking and restricted ingress. See
-[`deploy/kubernetes/README.md`](deploy/kubernetes/README.md) for the operational model.
-
-Configuration is deliberately not encoded by producing one image per profile. The image contains
-software; the per-instance PVC contains Hermes state; Kubernetes Secrets contain credentials; and
-the SDK bootstrap contract creates profiles, MCP registrations and tool bindings. Build a derived
-image only when a tool needs durable system packages or binaries.
-
-## Programmatic per-user provisioning
-
-The SDK supports both a reusable base image and images built on demand:
-
-```text
-image recipe
-  -> isolated asynchronous build
-  -> vulnerability/policy verification
-  -> immutable OCI digest + SBOM + provenance
-  -> user-owned instance
-  -> user-owned profile
-  -> capability discovery + connection descriptor
-  -> runtime and native Hermes calls
-```
-
-Use `sdk.images.start_image_build()` when image creation and instance creation are separate product
-steps. Use `sdk.control_plane.provision_user_instance()` for the single-call workflow: it accepts
-either a `managedImageId` or an inline build recipe, reuses an identical verified image when
-allowed, creates the container or Kubernetes pod, bootstraps its profile and ultimately returns
-the `instanceId`, `profileId`, and connection information.
-
-Every recipe, build, image and instance carries `{tenantId, subjectId}` ownership. An image recipe
-may install pinned APT, Python and Node packages and copy pre-uploaded artifacts. Build secrets are
-ephemeral secret mounts; they are never Docker build arguments, environment layers or returned in
-logs. Production policy should require an official digest-pinned Hermes base, a successful scan,
-an SBOM, provenance, a signature and an immutable result digest before instance creation.
-
-A complete request is available at
-[`examples/provision-user-instance.request.json`](examples/provision-user-instance.request.json).
-The recipe owner must match the provisioning-job owner; implementations reject cross-owner image
-use unless an explicit image-sharing grant exists.
-
-## Validation
-
-The contracts use OpenAPI 3.1. Run the local structural check with:
-
-```powershell
-python scripts/validate_contracts.py
-npx --yes @redocly/cli@latest lint "contracts/openapi/*.yaml"
-```
+The [SVG banner](assets/branding/hermes-python-adk.svg),
+[plain ASCII](assets/branding/hermes-python-adk.txt) and
+[ANSI color version](assets/branding/hermes-python-adk.ansi) share original pixel glyphs.
+Regenerate them with `uv run python scripts/generate_branding.py`.
+Badges use [Shields.io](https://shields.io/docs/static-badges); the CI badge links to the
+workflow configuration and does not assert a passing build.

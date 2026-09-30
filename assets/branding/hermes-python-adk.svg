@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="220" viewBox="0 0 1200 220" role="img" aria-labelledby="title description">
+  <title id="title">Hermes Python ADK</title>
+  <desc id="description">Original pixel lettering in a pink-to-violet gradient, with a layered purple shadow, on a dark background. Build, provision, control.</desc>
+  <defs>
+    <linearGradient id="face" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0" stop-color="#ffacd9"/>
+      <stop offset="0.44" stop-color="#f078c6"/>
+      <stop offset="1" stop-color="#b68bff"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#d961ac"/>
+      <stop offset="1" stop-color="#9670d8"/>
+    </linearGradient>
+    <path id="lettering" d="M0,0h22v11h-22z M33,0h22v11h-22z M66,0h55v11h-55z M132,0h44v11h-44z M198,0h22v11h-22z M231,0h22v11h-22z M264,0h55v11h-55z M341,0h44v11h-44z M440,0h44v11h-44z M506,0h22v11h-22z M539,0h22v11h-22z M572,0h55v11h-55z M638,0h22v11h-22z M671,0h22v11h-22z M715,0h33v11h-33z M770,0h22v11h-22z M814,0h22v11h-22z M902,0h33v11h-33z M957,0h44v11h-44z M1023,0h22v11h-22z M1056,0h22v11h-22z M0,11h22v11h-22z M33,11h22v11h-22z M66,11h22v11h-22z M132,11h22v11h-22z M165,11h22v11h-22z M198,11h55v11h-55z M264,11h22v11h-22z M330,11h22v11h-22z M440,11h22v11h-22z M473,11h22v11h-22z M506,11h22v11h-22z M539,11h22v11h-22z M583,11h33v11h-33z M638,11h22v11h-22z M671,11h22v11h-22z M704,11h22v11h-22z M737,11h22v11h-22z M770,11h33v11h-33z M814,11h22v11h-22z M891,11h22v11h-22z M924,11h22v11h-22z M957,11h22v11h-22z M990,11h22v11h-22z M1023,11h22v11h-22z M1056,11h22v11h-22z M0,22h22v11h-22z M33,22h22v11h-22z M66,22h22v11h-22z M132,22h22v11h-22z M165,22h22v11h-22z M198,22h55v11h-55z M264,22h22v11h-22z M330,22h22v11h-22z M440,22h22v11h-22z M473,22h22v11h-22z M506,22h22v11h-22z M539,22h22v11h-22z M583,22h33v11h-33z M638,22h22v11h-22z M671,22h22v11h-22z M704,22h22v11h-22z M737,22h22v11h-22z M770,22h66v11h-66z M891,22h22v11h-22z M924,22h22v11h-22z M957,22h22v11h-22z M990,22h22v11h-22z M1023,22h44v11h-44z M0,33h55v11h-55z M66,33h44v11h-44z M132,33h44v11h-44z M198,33h22v11h-22z M231,33h22v11h-22z M264,33h44v11h-44z M341,33h33v11h-33z M440,33h44v11h-44z M517,33h33v11h-33z M583,33h33v11h-33z M638,33h55v11h-55z M704,33h22v11h-22z M737,33h22v11h-22z M770,33h66v11h-66z M891,33h55v11h-55z M957,33h22v11h-22z M990,33h22v11h-22z M1023,33h33v11h-33z M0,44h22v11h-22z M33,44h22v11h-22z M66,44h22v11h-22z M132,44h44v11h-44z M198,44h22v11h-22z M231,44h22v11h-22z M264,44h22v11h-22z M363,44h22v11h-22z M440,44h22v11h-22z M517,44h33v11h-33z M583,44h33v11h-33z M638,44h22v11h-22z M671,44h22v11h-22z M704,44h22v11h-22z M737,44h22v11h-22z M770,44h22v11h-22z M803,44h33v11h-33z M891,44h22v11h-22z M924,44h22v11h-22z M957,44h22v11h-22z M990,44h22v11h-22z M1023,44h44v11h-44z M0,55h22v11h-22z M33,55h22v11h-22z M66,55h22v11h-22z M132,55h22v11h-22z M165,55h22v11h-22z M198,55h22v11h-22z M231,55h22v11h-22z M264,55h22v11h-22z M363,55h22v11h-22z M440,55h22v11h-22z M517,55h33v11h-33z M583,55h33v11h-33z M638,55h22v11h-22z M671,55h22v11h-22z M704,55h22v11h-22z M737,55h22v11h-22z M770,55h22v11h-22z M803,55h33v11h-33z M891,55h22v11h-22z M924,55h22v11h-22z M957,55h22v11h-22z M990,55h22v11h-22z M1023,55h22v11h-22z M1056,55h22v11h-22z M0,66h22v11h-22z M33,66h22v11h-22z M66,66h55v11h-55z M132,66h22v11h-22z M165,66h22v11h-22z M198,66h22v11h-22z M231,66h22v11h-22z M264,66h55v11h-55z M330,66h44v11h-44z M440,66h22v11h-22z M517,66h33v11h-33z M583,66h33v11h-33z M638,66h22v11h-22z M671,66h22v11h-22z M715,66h33v11h-33z M770,66h22v11h-22z M814,66h22v11h-22z M891,66h22v11h-22z M924,66h22v11h-22z M957,66h44v11h-44z M1023,66h22v11h-22z M1056,66h22v11h-22z"/>
+  </defs>
+  <rect width="1200" height="220" fill="#0d1117"/>
+  <rect x="18" y="24" width="1164" height="172" rx="3" fill="#120f19" stroke="#302039"/>
+  <g transform="translate(56 65)" shape-rendering="crispEdges">
+    <use href="#lettering" transform="translate(13 13)" fill="none" stroke="#78416e" stroke-width="1"/>
+    <use href="#lettering" transform="translate(10 10)" fill="none" stroke="url(#edge)" stroke-width="1"/>
+      <use href="#lettering" transform="translate(9 9)" fill="#492653"/>
+      <use href="#lettering" transform="translate(8 8)" fill="#492653"/>
+      <use href="#lettering" transform="translate(7 7)" fill="#492653"/>
+      <use href="#lettering" transform="translate(6 6)" fill="#492653"/>
+      <use href="#lettering" transform="translate(5 5)" fill="#492653"/>
+      <use href="#lettering" transform="translate(4 4)" fill="#492653"/>
+      <use href="#lettering" transform="translate(3 3)" fill="#492653"/>
+      <use href="#lettering" transform="translate(2 2)" fill="#492653"/>
+      <use href="#lettering" transform="translate(1 1)" fill="#492653"/>
+    <use href="#lettering" fill="url(#face)"/>
+    <use href="#lettering" transform="translate(-1 -1)" fill="none" stroke="#ffd0eb" stroke-width="0.55" opacity="0.35"/>
+  </g>
+  <text x="600" y="177" text-anchor="middle" fill="#c39ab9" font-family="ui-monospace, SFMono-Regular, Consolas, monospace" font-size="12" letter-spacing="4">BUILD · PROVISION · CONTROL</text>
+</svg>
