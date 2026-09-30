@@ -7,14 +7,19 @@ every Hermes feature, model, cloud integration or production topology.
 
 - **360 tests passed on each of Python 3.10, 3.11, 3.12 and 3.13** on Windows,
   including the final cleanup-failure regression.
-- **359 tests also passed inside Linux/Python 3.13**, using an isolated copy of
-  the checkout in the built control-plane container.
+- **360 tests also passed on each of Python 3.10–3.13 in Linux CI**. The earlier
+  container-local Linux/Python 3.13 run passed 359 tests before the final cleanup
+  regression was added.
 - Ruff, SDK and service mypy, deterministic SDK regeneration, the repository
   contract validator and Redocly validation passed.
 - Source/wheel builds passed. A clean wheel-only installation verified imports,
   version, `py.typed`, and all **64 HTTP / 219 native RPC** resource mappings.
 - The control-plane, mock and runtime-bridge Dockerfiles built locally.
   These are test images, not newly published release images.
+- All nine jobs passed in the [pre-promotion CI run](https://github.com/AnasMaar/edith-hermes-sdk/actions/runs/36657250404)
+  and the [main-branch CI run](https://github.com/AnasMaar/edith-hermes-sdk/actions/runs/36657416575),
+  including clean Linux image builds, default UID-10000 SQLite startup/readiness,
+  the four-version test matrix, quality gates and actual PostgreSQL concurrency.
 
 The tests include contract doubles and real HTTP/SQLite/TCP/WebSocket integration
 checks. Native catalog coverage means correct typed dispatch and routing; it does
@@ -142,7 +147,12 @@ The kind cluster, cached images and recoverable Docker socket-directory backup
 remain. One test container from the disk-full repeat may require cleanup after
 Docker recovers; it is named
 `edith-hermes-instance-e275893a827b4fcab7022dd1ad2e8f04`. The deletion request timed
-out rather than being reported as successful. No Docker-wide prune, factory reset
+out rather than being reported as successful. Scoped Docker Desktop/WSL restart
+attempts did not restore the local engine: Desktop's backend reported
+`context canceled`. Ubuntu was not terminated or globally restarted. Local
+Docker recovery and that test container's cleanup remain separate host tasks;
+the interrupted live repeat is not marked passed by the green CI run.
+No Docker-wide prune, factory reset
 or existing-user workload deletion was used. The temporary Ollama alias was
 unloaded and removed; the original installed models remain. Tests and source
 publication are separate steps.
