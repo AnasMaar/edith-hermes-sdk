@@ -26,6 +26,7 @@ from .errors import (
     RemoteError,
     ValidationError,
 )
+from .extensions import AsyncHermesExtensions
 from .provider_auth import ProviderLoginError
 from .transport import EmbeddedDriver
 
@@ -46,6 +47,7 @@ __all__ = [
     "tool",
     "AsyncEdithHermes",
     "AsyncHermesDesktop",
+    "AsyncHermesExtensions",
     "AuthenticationError",
     "ConflictError",
     "EdithHermes",
@@ -57,4 +59,4 @@ __all__ = [
     "ProviderLoginError",
 ]
 
-__version__ = "0.5.1"
+__version__ = "0.6.0"

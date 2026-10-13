@@ -113,3 +113,11 @@ async def test_history_checks_returned_owner_and_bounds():
             await client.sessions.messages("same-id")
         with pytest.raises(ValueError, match="between 1 and 500"):
             await client.sessions.messages("same-id", limit=501)
+
+
+@pytest.mark.asyncio
+async def test_http_body_cannot_override_owning_profile():
+    async with httpx.AsyncClient(base_url="http://hermes") as http:
+        client = AsyncHermesDesktop.remote(base_url="http://hermes", profile="family", http_client=http)
+        with pytest.raises(ValueError, match="bound profile"):
+            await client.configure({"profile": "door", "config": {"model": {"default": "other"}}})

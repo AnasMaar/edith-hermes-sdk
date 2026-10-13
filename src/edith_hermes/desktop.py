@@ -99,6 +99,8 @@ class AsyncHermesDesktop:
                        query: dict[str, Any] | None = None, timeout: float = 30) -> Any:
         if not path.startswith("/api/") or "?" in path or "#" in path:
             raise ValueError("Desktop paths must be native /api/ routes")
+        if isinstance(body, dict) and body.get("profile") is not None and body["profile"] != self.profile:
+            raise ValueError("A request body cannot override the bound profile")
         params = {**(query or {}), "profile": self.profile}
         response = await self._http.request(method, path, params=params, json=body,
             headers={"Authorization": f"Bearer {self._token}"} if self._token else {}, timeout=timeout)
