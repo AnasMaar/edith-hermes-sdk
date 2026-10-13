@@ -18,7 +18,9 @@ from .agent import (
     tool,
 )
 from .artifact_history import AsyncArtifactHistory
+from .audio import AsyncHermesAudio, SpeechResult, TranscriptionResult
 from .auxiliary_administration import AsyncAuxiliaryAdministration
+from .channel_pairings import AsyncChannelPairings
 from .channels_administration import AsyncChannelAdministration
 from .client import AsyncEdithHermes, EdithHermes
 from .command_center import AsyncCommandCenter
@@ -83,6 +85,10 @@ __all__ = [
     "AsyncLocalModelAdministration",
     "AsyncChannelAdministration",
     "AsyncSessionContexts",
+    "AsyncHermesAudio",
+    "SpeechResult",
+    "TranscriptionResult",
+    "AsyncChannelPairings",
     "AuthenticationError",
     "ConflictError",
     "EdithHermes",
@@ -94,4 +100,4 @@ __all__ = [
     "ProviderLoginError",
 ]
 
-__version__ = "0.20.0"
+__version__ = "0.21.0"
