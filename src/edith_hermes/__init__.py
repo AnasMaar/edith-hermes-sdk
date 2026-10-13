@@ -44,8 +44,10 @@ from .group_dialogue import AsyncGroupDialogue, GroupQuestion
 from .group_membership import AsyncGroupMembership, GroupRetirement
 from .integration_mutations import AsyncIntegrationMutations
 from .kanban import AsyncKanban
+from .kanban_management import AsyncKanbanManagement
 from .live_audio import AsyncLiveAudio, LiveAudioAnswer, LiveAudioStatus
 from .local_models_administration import AsyncLocalModelAdministration
+from .memory_backends import AsyncMemoryBackends
 from .plugin_administration import AsyncPluginAdministration, PluginActionReceipt, PluginReview
 from .profile_imports import (
     AsyncProfileImports,
@@ -164,6 +166,8 @@ __all__ = [
     "PluginActionReceipt",
     "PluginReview",
     "AsyncKanban",
+    "AsyncKanbanManagement",
+    "AsyncMemoryBackends",
     "AsyncLocalModelAdministration",
     "AsyncChannelAdministration",
     "AsyncSessionContexts",
@@ -182,4 +186,4 @@ __all__ = [
     "ProviderLoginError",
 ]
 
-__version__ = "0.29.0"
+__version__ = "0.30.0"

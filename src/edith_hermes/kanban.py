@@ -29,6 +29,15 @@ class KanbanRPC(Protocol):
     async def call(self, method: str, **params: Any) -> Any: ...
 
 
+class KanbanCapabilities(TypedDict, total=False):
+    read: bool
+    create: bool
+    edit: bool
+    move: bool
+    comment: bool
+    version: int
+
+
 class AsyncCheckedKanban:
     """Explicit EDITH extension: native rules with CAS and durable receipts."""
 
@@ -44,9 +53,9 @@ class AsyncCheckedKanban:
             "edith.desktop.v1.kanban." + method, board=self.board, profile=self.profile, **params
         )
 
-    async def capabilities(self) -> dict[str, bool]:
+    async def capabilities(self) -> KanbanCapabilities:
         return cast(
-            dict[str, bool],
+            KanbanCapabilities,
             await self._call("capabilities"),
         )
 

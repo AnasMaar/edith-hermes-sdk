@@ -1,7 +1,7 @@
 """Profile-owned native skill tree and supporting-file content CAS."""
 from __future__ import annotations
 
-from typing import TypedDict, cast
+from typing import Literal, TypedDict, cast
 
 from .extensions import ExtensionTransport, SkillDocument
 
@@ -12,6 +12,13 @@ class SkillFile(TypedDict):
     isDirectory: bool
     sizeBytes: int
     modifiedAtMs: float
+
+
+class SkillFileRemoval(TypedDict):
+    id: str
+    resourceId: str
+    path: str
+    status: Literal['pending', 'applied', 'rejected', 'uncertain']
 
 
 class AsyncSkillDocuments:
@@ -31,3 +38,7 @@ class AsyncSkillDocuments:
     async def write(self, skill_id: str, *, path: str, revision: str, content: str) -> SkillDocument:
         return cast(SkillDocument, await self.transport.call('edith.desktop.v1.skillDocuments.write',
             profile=self.profile, id=skill_id, path=path, revision=revision, content=content))
+
+    async def remove(self, skill_id: str, *, path: str, revision: str, request_id: str) -> SkillFileRemoval:
+        return cast(SkillFileRemoval, await self.transport.call('edith.desktop.v1.skillDocuments.remove',
+            profile=self.profile, id=skill_id, path=path, revision=revision, request_id=request_id))
