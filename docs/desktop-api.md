@@ -62,6 +62,11 @@ These bindings were checked against native Hermes checkout
 facades. Source provenance and native API ownership remain with Hermes.
 
 EDITH's optional versioned extension client is separate from native REST/RPC.
+`skill_inventory()` returns canonical file identities, revision tokens and optional
+legacy invocation aliases, including disabled skills. `toggle_skill(id, revision=...,
+enabled=...)` performs a per-skill compare-and-swap under Hermes's configuration
+lock. It never writes an inventory snapshot back into configuration. Discover
+`skills.inventory` and `skills.toggle` before using these product-owned methods.
 `git_diff` preserves patch line endings, `git_apply` checks and atomically applies
 selected review patches with fixed Git arguments, and `cron_trigger` / `cron_operation`
 wrap the native scheduler claim in a durable request receipt. They require

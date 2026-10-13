@@ -4,6 +4,20 @@ from edith_hermes import AsyncHermesExtensions
 
 
 @pytest.mark.asyncio
+async def test_skills_inventory_and_enablement_have_explicit_profile_and_revision():
+    calls = []
+    class Connection:
+        async def call(self, method, **params):
+            calls.append((method, params))
+            return {'skills': []} if method.endswith('inventory') else {'id': 'stable', 'enabled': False}
+    client = AsyncHermesExtensions(Connection(), profile='door')
+    assert await client.skill_inventory() == []
+    assert (await client.toggle_skill('stable', revision='before', enabled=False))['enabled'] is False
+    assert calls == [('edith.desktop.v1.skills.inventory', {'profile': 'door'}),
+                     ('edith.desktop.v1.skills.toggle', {'profile': 'door', 'id': 'stable', 'revision': 'before', 'enabled': False})]
+
+
+@pytest.mark.asyncio
 async def test_blueprint_preparation_is_profile_scoped_and_never_creates_a_job():
     calls = []
 

@@ -62,6 +62,17 @@ class RoomToolFact(TypedDict):
     tool: dict[str, Any]
 
 
+class SkillInventoryEntry(TypedDict):
+    id: str
+    canonicalId: str
+    name: str
+    description: str
+    category: str
+    enabled: bool
+    revision: str
+    invocationId: str | None
+
+
 class AsyncHermesExtensions:
     """Capabilities must be checked on the running product extension deployment."""
     def __init__(self, connection: ExtensionTransport, *, profile: str):
@@ -74,6 +85,16 @@ class AsyncHermesExtensions:
         if not isinstance(result, dict) or result.get("version") != 1:
             raise ValueError("Unsupported EDITH desktop extension version")
         return cast(dict[str, Any], result)
+
+    async def skill_inventory(self) -> list[SkillInventoryEntry]:
+        """Stable file identity, including disabled skills; separate from invocation IDs."""
+        result = await self.connection.call('edith.desktop.v1.skills.inventory', profile=self.profile)
+        return cast(list[SkillInventoryEntry], result['skills'])
+
+    async def toggle_skill(self, identity: str, *, revision: str, enabled: bool) -> SkillInventoryEntry:
+        """Per-skill CAS, preserving secrets and unrelated native configuration."""
+        return cast(SkillInventoryEntry, await self.connection.call('edith.desktop.v1.skills.toggle',
+            profile=self.profile, id=identity, revision=revision, enabled=enabled))
 
     async def mcp_revisions(self) -> dict[str, str]:
         result = await self.connection.call("edith.desktop.v1.mcp.revisions", profile=self.profile)
