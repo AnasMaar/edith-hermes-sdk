@@ -18,6 +18,10 @@ class ArtifactSession(TypedDict, total=False):
     title: str
     started_at: float
     last_active: float
+    source: str
+    cwd: str
+    parent_session_id: str | None
+    scheduler_owned: bool
 
 
 class ArtifactSessionPage(TypedDict, total=False):
@@ -68,6 +72,14 @@ class AsyncArtifactHistory:
         if not isinstance(result, dict) or result.get('profile') != self.desktop.profile or not isinstance(result.get('messages'), list):
             raise ValueError('The artifact history belongs to another profile')
         return cast(ArtifactMessagePage, result)
+
+    async def session(self, session_id: str) -> ArtifactSession:
+        if not session_id:
+            raise ValueError('Choose a canonical originating session')
+        result = await self.desktop._request('GET', '/api/sessions/' + quote(session_id, safe=''))
+        if not isinstance(result, dict) or result.get('profile') != self.desktop.profile or not isinstance(result.get('id'), str):
+            raise ValueError('The originating session belongs to another profile')
+        return cast(ArtifactSession, result)
 
     async def file(self, session_id: str, path: str) -> dict[str, Any]:
         if not session_id or not path:

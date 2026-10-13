@@ -38,7 +38,7 @@ from .errors import (
 )
 from .extensions import AsyncHermesExtensions
 from .files import AsyncFiles
-from .git_mutations import AsyncGitMutations
+from .git_mutations import AsyncGitMutations, GitProviderState
 from .group_attachments import AsyncGroupAttachments, GroupAttachment
 from .group_dialogue import AsyncGroupDialogue, GroupQuestion
 from .group_membership import AsyncGroupMembership, GroupRetirement
@@ -65,6 +65,7 @@ from .provider_endpoints import (
 )
 from .provider_oauth import AsyncProviderOAuth
 from .room_peers import AsyncRoomPeers, PeerGrant, PeerInvitation, PeerReceipt, PeerRoute
+from .room_policy import AsyncRoomPolicy
 from .schedule_mutations import (
     AsyncScheduleMutations,
     ScheduleChanges,
@@ -106,6 +107,7 @@ __all__ = [
     "DesktopAdministration",
     "AsyncDeployment",
     "AsyncGitMutations",
+    "GitProviderState",
     "AsyncIntegrationMutations",
     "AsyncScheduleMutations",
     "ScheduleChanges",
@@ -137,6 +139,7 @@ __all__ = [
     "LiveAudioStatus",
     "AsyncClientWake",
     "AsyncRoomPeers",
+    "AsyncRoomPolicy",
     "PeerGrant",
     "PeerInvitation",
     "PeerReceipt",
@@ -179,4 +182,4 @@ __all__ = [
     "ProviderLoginError",
 ]
 
-__version__ = "0.28.0"
+__version__ = "0.29.0"

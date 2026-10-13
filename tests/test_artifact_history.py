@@ -64,3 +64,14 @@ async def test_artifact_content_is_bound_to_its_originating_session_and_profile(
     async with httpx.AsyncClient(base_url='http://native', transport=httpx.MockTransport(response)) as http:
         desktop = AsyncHermesDesktop(http, 'family', token='backend-only')
         assert await AsyncArtifactHistory(desktop).file('canonical', './été.png') == {'dataUrl': 'data:image/png;base64,YQ=='}
+
+
+@pytest.mark.asyncio
+async def test_originating_session_detail_keeps_owner_and_native_managed_source():
+    def response(request):
+        assert request.url.path == '/api/sessions/native%2Fsession' or request.url.path == '/api/sessions/native/session'
+        assert request.url.params['profile'] == 'family'
+        return httpx.Response(200, json={'id': 'native/session', 'profile': 'family', 'source': 'cron', 'scheduler_owned': True})
+    async with httpx.AsyncClient(base_url='http://native', transport=httpx.MockTransport(response)) as http:
+        row = await AsyncArtifactHistory(AsyncHermesDesktop(http, 'family')).session('native/session')
+        assert row['scheduler_owned'] is True
