@@ -81,3 +81,12 @@ async def test_native_review_patch_and_cron_receipt_bindings_do_not_retry():
         ('edith.desktop.v1.cron.operation',{'profile':'family','request_id':'request'}),
         ('edith.desktop.v1.git.diff',{'profile':'family','path':'C:/repo','file':'été.txt','source':'unstaged'})]
     with pytest.raises(ValueError):await client.git_apply('C:/repo','',target='unstaged')
+
+
+@pytest.mark.asyncio
+async def test_group_tool_activity_retains_room_and_profile_scope():
+    calls=[]
+    class Connection:
+        async def call(self,method,**params):calls.append((method,params));return {'tools':[]}
+    assert await AsyncHermesExtensions(Connection(),profile='door').group_activity('room')==[]
+    assert calls==[('edith.desktop.v1.groups.activity',{'profile':'door','room_id':'room'})]

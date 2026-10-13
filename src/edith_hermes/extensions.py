@@ -43,6 +43,16 @@ class CronTriggerReceipt(TypedDict, total=False):
     lastRunAt: str | None
 
 
+class RoomToolFact(TypedDict):
+    id: str
+    memberId: str
+    taskId: str
+    generation: int
+    threadId: str | None
+    createdAt: float
+    tool: dict[str, Any]
+
+
 class AsyncHermesExtensions:
     """Capabilities must be checked on the running product extension deployment."""
     def __init__(self, connection: ExtensionTransport, *, profile: str):
@@ -75,6 +85,11 @@ class AsyncHermesExtensions:
     async def cron_operation(self, request_id: str) -> CronTriggerReceipt:
         """Read the owning backend receipt after a lost reply or app restart."""
         return cast(CronTriggerReceipt, await self.connection.call('edith.desktop.v1.cron.operation', profile=self.profile, request_id=request_id))
+
+    async def group_activity(self, room_id: str) -> list[RoomToolFact]:
+        """Read native hosted-member tool facts; independent of room orchestration."""
+        result=await self.connection.call('edith.desktop.v1.groups.activity',profile=self.profile,room_id=room_id)
+        return cast(list[RoomToolFact],result['tools'])
 
     async def git_inspect(self, path: str) -> GitInspection | None:
         """Host metadata for native Git review; capability-gated versioned extension."""
