@@ -17,6 +17,7 @@ from .agent import (
     ToolHost,
     tool,
 )
+from .auxiliary_administration import AsyncAuxiliaryAdministration
 from .client import AsyncEdithHermes, EdithHermes
 from .deployment import AsyncDeployment
 from .desktop import AsyncHermesDesktop
@@ -29,8 +30,11 @@ from .errors import (
     ValidationError,
 )
 from .extensions import AsyncHermesExtensions
+from .files import AsyncFiles
 from .git_mutations import AsyncGitMutations
+from .group_membership import AsyncGroupMembership, GroupRetirement
 from .integration_mutations import AsyncIntegrationMutations
+from .provider_administration import AsyncProviderAdministration
 from .provider_auth import ProviderLoginError
 from .schedule_mutations import AsyncScheduleMutations
 from .skill_administration import AsyncSkillAdministration
@@ -60,6 +64,11 @@ __all__ = [
     "AsyncIntegrationMutations",
     "AsyncScheduleMutations",
     "AsyncSkillAdministration",
+    "AsyncAuxiliaryAdministration",
+    "AsyncFiles",
+    "AsyncGroupMembership",
+    "GroupRetirement",
+    "AsyncProviderAdministration",
     "AuthenticationError",
     "ConflictError",
     "EdithHermes",
@@ -71,4 +80,4 @@ __all__ = [
     "ProviderLoginError",
 ]
 
-__version__ = "0.16.0"
+__version__ = "0.17.0"

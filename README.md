@@ -305,6 +305,13 @@ and checked mutations. These extensions require capability discovery on the
 owning deployment; they are separate from Hermes's native RPC methods. Uncertain
 operations are reconciled by request ID and are never automatically dispatched twice.
 
+SDK 0.17 adds profile-scoped `AsyncProviderAdministration` and
+`AsyncAuxiliaryAdministration` for checked native configuration changes,
+`AsyncFiles` for checked writes on the owning filesystem, and
+`AsyncGroupMembership` for retiring an exact idle native room revision.
+These explicit extensions retain the native Hermes configuration, filesystem
+and room engines; their operation receipts reconcile lost replies.
+
 ```bash
 uv sync --all-extras --group dev
 uv run pytest
