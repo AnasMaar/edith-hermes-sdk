@@ -20,7 +20,7 @@ async def test_room_peers_preserve_exact_profile_and_native_scope():
     await sdk.operation('once')
     await sdk.route(room_id='home-room', member_id='member')
     await sdk.register(room_id='home-room', member_id='member', target_url='https://peer',
-                       target_profile='family', grant='private', cancellation_scope_id='cancel', trace_id='trace')
+                       target_profile='family', grant='private', catalog={'catalog_digest':'exact'}, cancellation_scope_id='cancel', trace_id='trace')
     await sdk.revoke('private')
     assert [method for method, _ in calls] == ['groups.capabilities',
         'edith.desktop.v1.groups.peer.invite', 'edith.desktop.v1.groups.peer.operation',
@@ -28,3 +28,4 @@ async def test_room_peers_preserve_exact_profile_and_native_scope():
     assert all(params['profile']=='door' for _, params in calls)
     assert calls[1][1]['invitation'] == invitation
     assert calls[-2][1]['target_profile'] == 'family'
+    assert calls[-2][1]['catalog'] == {'catalog_digest':'exact'}

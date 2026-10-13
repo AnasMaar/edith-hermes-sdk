@@ -69,11 +69,11 @@ class AsyncRoomPeers:
 
     async def register(
         self, *, room_id: str, member_id: str, target_url: str,
-        target_profile: str, grant: str, cancellation_scope_id: str, trace_id: str
+        target_profile: str, grant: str, catalog: dict[str, Any], cancellation_scope_id: str, trace_id: str
     ) -> dict[str, Any]:
         return cast(dict[str, Any], await self.connection.call(
             'groups.peer.register', profile=self.profile, room_id=room_id, member_id=member_id,
-            target_url=target_url, target_profile=target_profile, grant=grant,
+            target_url=target_url, target_profile=target_profile, grant=grant, catalog=catalog,
             cancellation_scope_id=cancellation_scope_id, trace_id=trace_id))
 
     async def revoke(self, grant: str) -> dict[str, Any]:

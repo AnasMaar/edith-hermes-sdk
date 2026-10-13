@@ -24,6 +24,7 @@ from .channel_pairings import AsyncChannelPairings
 from .channels_administration import AsyncChannelAdministration
 from .client import AsyncEdithHermes, EdithHermes
 from .client_wake import AsyncClientWake
+from .command_actions import AsyncCommandActions, CommandActionReceipt
 from .command_center import AsyncCommandCenter
 from .deployment import AsyncDeployment
 from .desktop import AsyncHermesDesktop
@@ -45,6 +46,7 @@ from .integration_mutations import AsyncIntegrationMutations
 from .kanban import AsyncKanban
 from .live_audio import AsyncLiveAudio, LiveAudioAnswer, LiveAudioStatus
 from .local_models_administration import AsyncLocalModelAdministration
+from .plugin_administration import AsyncPluginAdministration, PluginActionReceipt, PluginReview
 from .profile_imports import (
     AsyncProfileImports,
     ProfileImportInventory,
@@ -153,6 +155,11 @@ __all__ = [
     "AsyncProviderOAuth",
     "AsyncArtifactHistory",
     "AsyncCommandCenter",
+    "AsyncCommandActions",
+    "CommandActionReceipt",
+    "AsyncPluginAdministration",
+    "PluginActionReceipt",
+    "PluginReview",
     "AsyncKanban",
     "AsyncLocalModelAdministration",
     "AsyncChannelAdministration",
@@ -172,4 +179,4 @@ __all__ = [
     "ProviderLoginError",
 ]
 
-__version__ = "0.27.0"
+__version__ = "0.28.0"

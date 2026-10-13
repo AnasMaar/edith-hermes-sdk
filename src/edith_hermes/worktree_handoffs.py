@@ -30,7 +30,7 @@ class HandoffReceipt(TypedDict):
     repository: str
     source: str
     target: str
-    status: Literal['pending', 'applied', 'uncertain']
+    status: Literal['pending', 'applied', 'rejected', 'uncertain']
     step: str
     recoveryRefs: dict[str, str]
     error: str | None
