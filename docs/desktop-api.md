@@ -25,7 +25,13 @@ execution history, delivery targets and blueprints. Mutation preflight rejects
 native cross-profile fallback; returned owner metadata is also checked. This
 preflight is not a server-side compare-and-swap transaction.
 Files expose native tree/text/data-URL operations. Git exposes review, mutation,
-branch and worktree operations. Skills expose installed content reading/writing.
+branch and worktree operations. Skills expose installed inventory, content
+reading/writing, creation and enablement, plus Hub official catalog, sources,
+search, preview, safety scanning, install, uninstall and batch update bindings.
+Hub installer methods return a process receipt, not installation success. Check
+the native action result and saved inventory before confirming completion. SDK
+timeouts never replay the installer. Scan policy and user consent belong to the
+application's native flow; a scan result is not implicit consent to install.
 Sessions expose bounded, owner-checked message pages. This release does not claim
 complete coverage of every Desktop REST route or Electron host service.
 

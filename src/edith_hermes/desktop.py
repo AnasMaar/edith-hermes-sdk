@@ -280,18 +280,112 @@ class DesktopGit:
         return await self.client._request("POST", "/api/git/worktree/remove", body={"path": path, "worktreePath": worktree_path, "force": force})
 
 
+class DesktopSkill(TypedDict, total=False):
+    name: str
+    description: str
+    path: str
+    category: str
+    enabled: bool
+    source: str
+    usage: int
+    provenance: Literal['hub', 'bundled', 'external', 'agent']
+
+
+class SkillContent(TypedDict):
+    name: str
+    content: str
+    path: str
+
+
+class HubSkill(TypedDict, total=False):
+    identifier: str
+    name: str
+    description: str
+    source: str
+    trust_level: str
+    repo: str | None
+    tags: list[str]
+    installed: bool
+    category: str
+    skill_md: str
+    files: list[str]
+
+
+class HubSearch(TypedDict):
+    results: list[HubSkill]
+    source_counts: dict[str, int]
+    timed_out: list[str]
+    installed: dict[str, dict[str, str | None]]
+
+
+class HubScan(TypedDict, total=False):
+    name: str
+    identifier: str
+    source: str
+    trust_level: str
+    verdict: str
+    summary: str
+    policy: Literal['allow', 'ask', 'block']
+    policy_reason: str
+    findings: list[dict[str, Any]]
+    severity_counts: dict[str, int]
+    tier1: dict[str, Any] | None
+
+
+class SkillProcessReceipt(TypedDict):
+    ok: bool
+    pid: int
+    name: str
+
+
 class DesktopSkills:
     def __init__(self, client: AsyncHermesDesktop):
         self.client = client
 
-    async def list(self) -> Any:
-        return await self.client._request("GET", "/api/skills")
+    async def list(self) -> builtins.list[DesktopSkill]:
+        result = await self.client._request("GET", "/api/skills")
+        return cast(builtins.list[DesktopSkill], result)
 
-    async def content(self, name: str) -> Any:
-        return await self.client._request("GET", "/api/skills/content", query={"name": name})
+    async def content(self, name: str) -> SkillContent:
+        return cast(SkillContent, await self.client._request("GET", "/api/skills/content", query={"name": name}))
 
     async def save(self, name: str, content: str) -> Any:
         return await self.client._request("PUT", "/api/skills/content", body={"name": name, "content": content})
+
+    async def create(self, name: str, content: str, *, category: str | None = None) -> dict[str, Any]:
+        return cast(dict[str, Any], await self.client._request('POST', '/api/skills', body={'name': name, 'content': content, 'category': category}))
+
+    async def toggle(self, name: str, enabled: bool) -> dict[str, Any]:
+        return cast(dict[str, Any], await self.client._request('PUT', '/api/skills/toggle', body={'name': name, 'enabled': enabled}))
+
+    async def official(self) -> builtins.list[HubSkill]:
+        result = await self.client._request('GET', '/api/skills/hub/official')
+        return cast(builtins.list[HubSkill], result['skills'])
+
+    async def sources(self) -> dict[str, Any]:
+        return cast(dict[str, Any], await self.client._request('GET', '/api/skills/hub/sources'))
+
+    async def search(self, query: str, *, source: str = 'all', limit: int = 20) -> HubSearch:
+        if not 1 <= limit <= 50:
+            raise ValueError('Skill search limit must be between 1 and 50')
+        return cast(HubSearch, await self.client._request('GET', '/api/skills/hub/search', query={'q': query, 'source': source, 'limit': limit}, timeout=45))
+
+    async def preview(self, identifier: str) -> HubSkill:
+        return cast(HubSkill, await self.client._request('GET', '/api/skills/hub/preview', query={'identifier': identifier}))
+
+    async def scan(self, identifier: str) -> HubScan:
+        return cast(HubScan, await self.client._request('GET', '/api/skills/hub/scan', query={'identifier': identifier}, timeout=90))
+
+    async def install(self, identifier: str) -> SkillProcessReceipt:
+        """Start the native installer. This receipt is not installation success."""
+        return cast(SkillProcessReceipt, await self.client._request('POST', '/api/skills/hub/install', body={'identifier': identifier}))
+
+    async def uninstall(self, name: str) -> SkillProcessReceipt:
+        return cast(SkillProcessReceipt, await self.client._request('POST', '/api/skills/hub/uninstall', body={'name': name}))
+
+    async def update(self) -> SkillProcessReceipt:
+        """Hermes's update operation updates installed Hub skills as a batch."""
+        return cast(SkillProcessReceipt, await self.client._request('POST', '/api/skills/hub/update', body={}))
 
 
 class DesktopSessions:
