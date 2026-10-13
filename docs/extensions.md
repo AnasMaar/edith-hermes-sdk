@@ -17,3 +17,15 @@ operation journal. If a save succeeds but its reply is lost, reconciliation can
 confirm the stored server fingerprint without replaying the mutation. Independent
 CLI processes do not share the server's in-process lock; this binding does not
 claim a cross-process filesystem transaction.
+
+`git_inspect(path)` reads repository identity, common directory, HEAD, status and
+branches on the owning host using Hermes's native Git helpers. Its versioned
+extension capability is `git.inspect`; no shell or arbitrary command API is
+exposed. Native Desktop `git.file_diff(path, file)` reads the complete difference
+against HEAD, including both staged and unstaged changes.
+
+`git_objects(path, requests, limit=4194304)` reads bounded blob/workspace bytes for
+full diff expansion. Objects use hexadecimal blob IDs; disk reads stay within
+the repository, including after symlink resolution. Missing, binary and oversized
+content have distinct results. The per-object ceiling is 16 MiB and the native
+batch budget is 32 MiB. File bytes retain their original line endings.

@@ -20,6 +20,21 @@ class McpPatch(TypedDict, total=False):
     clear_header_keys: list[str]
 
 
+class GitInspection(TypedDict):
+    root: str
+    commonDir: str
+    originUrl: str | None
+    head: str | None
+    status: dict[str, Any]
+    branches: list[dict[str, Any]]
+
+
+class GitObjectRequest(TypedDict):
+    path: str
+    objectId: str | None
+    preferDisk: bool
+
+
 class AsyncHermesExtensions:
     """Capabilities must be checked on the running product extension deployment."""
     def __init__(self, connection: ExtensionTransport, *, profile: str):
@@ -44,3 +59,13 @@ class AsyncHermesExtensions:
 
     async def mcp_operation(self, request_id: str) -> dict[str, Any]:
         return cast(dict[str, Any], await self.connection.call("edith.desktop.v1.mcp.operation", profile=self.profile, request_id=request_id))
+
+    async def git_inspect(self, path: str) -> GitInspection | None:
+        """Host metadata for native Git review; capability-gated versioned extension."""
+        return cast(GitInspection | None, await self.connection.call("edith.desktop.v1.git.inspect", profile=self.profile, path=path))
+
+    async def git_objects(self, path: str, requests: list[GitObjectRequest], *, limit: int = 4194304) -> list[dict[str, Any]]:
+        """Bounded, read-only blob or workspace reads for native diff expansion."""
+        if not 1 <= limit <= 16777216 or len(requests) > 32:
+            raise ValueError("Git object reads exceed the supported bounds")
+        return cast(list[dict[str, Any]], await self.connection.call("edith.desktop.v1.git.objects", profile=self.profile, path=path, requests=requests, limit=limit))

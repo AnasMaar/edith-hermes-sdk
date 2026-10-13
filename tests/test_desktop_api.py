@@ -7,6 +7,17 @@ from edith_hermes import AsyncHermesDesktop
 
 
 @pytest.mark.asyncio
+async def test_full_file_git_diff_uses_native_head_comparison_and_scope():
+    def receive(request):
+        assert request.url.path == "/api/git/file-diff"
+        assert dict(request.url.params)=={"path":"C:/repo","file":"été.txt","profile":"door"}
+        return httpx.Response(200,json={"diff":"staged and unstaged"})
+    async with httpx.AsyncClient(base_url="http://hermes",transport=httpx.MockTransport(receive)) as http:
+        client=AsyncHermesDesktop.remote(base_url="http://hermes",profile="door",http_client=http)
+        assert await client.git.file_diff("C:/repo","été.txt")=="staged and unstaged"
+
+
+@pytest.mark.asyncio
 async def test_profile_scope_and_wire_contract():
     requests = []
     def receive(request):

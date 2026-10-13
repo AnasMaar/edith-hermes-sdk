@@ -247,6 +247,11 @@ class DesktopGit:
         result = await self.client._request("GET", "/api/git/review/diff", query=query)
         return cast(str, result["diff"])
 
+    async def file_diff(self, path: str, file: str) -> str:
+        """Full file against HEAD, including staged and unstaged changes."""
+        result = await self.client._request("GET", "/api/git/file-diff", query={"path": path, "file": file})
+        return cast(str, result["diff"])
+
     async def change(self, action: Literal["stage", "unstage", "revert"], path: str, file: str | None = None) -> Any:
         return await self.client._request("POST", f"/api/git/review/{action}", body={"path": path, "file": file})
 
