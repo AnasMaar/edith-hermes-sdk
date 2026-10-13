@@ -290,6 +290,12 @@ these results are not certification of an arbitrary production deployment.
 
 ## Development
 
+Desktop Git bindings include typed native worktree listings and creation options.
+The explicit `AsyncHermesExtensions` worktree methods add durable, profile-owned
+creation receipts and revision-checked removal around native Hermes Git handlers.
+Ignored files, active agents and locked checkouts prevent checked removal; a
+missing reply never triggers an automatic mutation retry.
+
 ```bash
 uv sync --all-extras --group dev
 uv run pytest

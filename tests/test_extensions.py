@@ -4,6 +4,47 @@ from edith_hermes import AsyncHermesExtensions
 
 
 @pytest.mark.asyncio
+async def test_worktree_removal_passes_checked_checkout_revision_without_retry():
+    calls = []
+
+    class Connection:
+        async def call(self, method, **params):
+            calls.append((method, params))
+            if method.endswith('remove'):
+                raise TimeoutError('Deletion outcome unknown')
+            return {'path': 'C:/repo/.worktrees/été', 'repository': 'C:/repo', 'revision': 'identity', 'locked': False, 'clean': True, 'branch': 'branch'}
+
+    client = AsyncHermesExtensions(Connection(), profile='door')
+    state = await client.worktree_state('C:/repo', 'C:/repo/.worktrees/été')
+    with pytest.raises(TimeoutError):
+        await client.remove_worktree(state['repository'], state['path'], revision=state['revision'])
+    assert calls[-1] == ('edith.desktop.v1.git.worktree_remove', {'profile': 'door', 'repository': 'C:/repo', 'path': 'C:/repo/.worktrees/été', 'revision': 'identity'})
+    assert len(calls) == 2
+
+
+@pytest.mark.asyncio
+async def test_worktree_creation_receipt_is_scoped_and_no_automatic_dispatch_retry_occurs():
+    calls = []
+
+    class Connection:
+        async def call(self, method, **params):
+            calls.append((method, params))
+            if method.endswith('create'):
+                raise TimeoutError('Lost dispatch reply')
+            return {'id': 'single', 'profileId': 'door', 'status': 'applied', 'path': '/repo/.worktrees/one', 'repository': '/repo', 'branch': 'edith/one'}
+
+    client = AsyncHermesExtensions(Connection(), profile='door')
+    with pytest.raises(TimeoutError):
+        await client.create_worktree('/repo', 'one', 'main', 'edith/one', request_id='single')
+    receipt = await client.worktree_operation('single')
+    assert receipt['status'] == 'applied'
+    assert calls == [
+        ('edith.desktop.v1.git.worktree_create', {'profile': 'door', 'repository': '/repo', 'name': 'one', 'base': 'main', 'branch': 'edith/one', 'request_id': 'single'}),
+        ('edith.desktop.v1.git.worktree_operation', {'profile': 'door', 'request_id': 'single'}),
+    ]
+
+
+@pytest.mark.asyncio
 async def test_skill_cli_actions_keep_profile_request_and_resource_identity_without_retry():
     calls = []
 

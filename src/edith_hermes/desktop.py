@@ -227,6 +227,25 @@ class DesktopFiles:
         return cast(dict[str, Any], await self.client._request("GET", "/api/fs/default-cwd"))
 
 
+class DesktopWorktree(TypedDict):
+    path: str
+    branch: str | None
+    isMain: bool
+    detached: bool
+    locked: bool
+
+
+class DesktopWorktreeList(TypedDict):
+    worktrees: list[DesktopWorktree]
+
+
+class DesktopWorktreeOptions(TypedDict, total=False):
+    name: str
+    branch: str
+    base: str
+    existingBranch: str
+
+
 class DesktopGit:
     def __init__(self, client: AsyncHermesDesktop):
         self.client = client
@@ -270,11 +289,11 @@ class DesktopGit:
     async def switch(self, path: str, branch: str) -> Any:
         return await self.client._request("POST", "/api/git/branch/switch", body={"path": path, "branch": branch})
 
-    async def worktrees(self, path: str) -> dict[str, Any]:
-        return cast(dict[str, Any], await self.client._request("GET", "/api/git/worktrees", query={"path": path}))
+    async def worktrees(self, path: str) -> DesktopWorktreeList:
+        return cast(DesktopWorktreeList, await self.client._request("GET", "/api/git/worktrees", query={"path": path}))
 
-    async def add_worktree(self, path: str, options: dict[str, Any]) -> Any:
-        return await self.client._request("POST", "/api/git/worktree/add", body={**options, "path": path})
+    async def add_worktree(self, path: str, options: DesktopWorktreeOptions) -> dict[str, Any]:
+        return cast(dict[str, Any], await self.client._request("POST", "/api/git/worktree/add", body={**options, "path": path}))
 
     async def remove_worktree(self, path: str, worktree_path: str, *, force: bool = False) -> Any:
         return await self.client._request("POST", "/api/git/worktree/remove", body={"path": path, "worktreePath": worktree_path, "force": force})

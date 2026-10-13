@@ -7,6 +7,25 @@ from edith_hermes import AsyncHermesDesktop
 
 
 @pytest.mark.asyncio
+async def test_worktree_native_wire_scope_and_foreign_option_fields_are_not_rewritten():
+    requests = []
+
+    def receive(request):
+        requests.append(request)
+        return httpx.Response(200, json={'worktrees': []} if request.method == 'GET' else {'ok': True})
+
+    async with httpx.AsyncClient(base_url='http://hermes', transport=httpx.MockTransport(receive)) as http:
+        client = AsyncHermesDesktop.remote(base_url='http://hermes', profile='door', http_client=http)
+        assert await client.git.worktrees('C:/repo') == {'worktrees': []}
+        await client.git.add_worktree('C:/repo', {'name': 'été', 'base': 'main', 'branch': 'edith/work'})
+        await client.git.remove_worktree('C:/repo', 'C:/repo/.worktrees/été')
+    assert dict(requests[0].url.params) == {'path': 'C:/repo', 'profile': 'door'}
+    assert dict(requests[1].url.params) == dict(requests[2].url.params) == {'profile': 'door'}
+    assert json.loads(requests[1].content) == {'name': 'été', 'base': 'main', 'branch': 'edith/work', 'path': 'C:/repo'}
+    assert json.loads(requests[2].content) == {'path': 'C:/repo', 'worktreePath': 'C:/repo/.worktrees/été', 'force': False}
+
+
+@pytest.mark.asyncio
 async def test_full_file_git_diff_uses_native_head_comparison_and_scope():
     def receive(request):
         assert request.url.path == "/api/git/file-diff"

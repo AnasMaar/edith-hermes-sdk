@@ -44,6 +44,24 @@ class GitObjectRequest(TypedDict):
     preferDisk: bool
 
 
+class WorktreeState(TypedDict):
+    path: str
+    repository: str
+    revision: str
+    locked: bool
+    clean: bool
+    branch: str | None
+
+
+class WorktreeReceipt(TypedDict):
+    id: str
+    profileId: str
+    status: Literal['pending', 'applied', 'uncertain']
+    path: str | None
+    repository: str
+    branch: str
+
+
 class CronTriggerReceipt(TypedDict, total=False):
     requestId: str
     profileId: str
@@ -199,3 +217,22 @@ class AsyncHermesExtensions:
         """Byte-faithful text patch where native REST normalizes CRLF."""
         result = await self.connection.call('edith.desktop.v1.git.diff', profile=self.profile, path=path, file=file, source=source)
         return cast(str, result['diff'])
+
+    async def worktree_state(self, repository: str, path: str) -> WorktreeState:
+        """Inspect a linked checkout, including ignored files and checkout identity."""
+        return cast(WorktreeState, await self.connection.call('edith.desktop.v1.git.worktree_state',
+            profile=self.profile, repository=repository, path=path))
+
+    async def remove_worktree(self, repository: str, path: str, *, revision: str) -> dict[str, Any]:
+        """Checked native removal; never force deletion or retry an unknown outcome."""
+        return cast(dict[str, Any], await self.connection.call('edith.desktop.v1.git.worktree_remove',
+            profile=self.profile, repository=repository, path=path, revision=revision))
+
+    async def create_worktree(self, repository: str, name: str, base: str, branch: str, *, request_id: str) -> WorktreeReceipt:
+        """Durable native creation receipt; never infer ownership from a branch name."""
+        return cast(WorktreeReceipt, await self.connection.call('edith.desktop.v1.git.worktree_create',
+            profile=self.profile, repository=repository, name=name, base=base, branch=branch, request_id=request_id))
+
+    async def worktree_operation(self, request_id: str) -> WorktreeReceipt:
+        return cast(WorktreeReceipt, await self.connection.call('edith.desktop.v1.git.worktree_operation',
+            profile=self.profile, request_id=request_id))
