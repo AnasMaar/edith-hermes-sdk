@@ -37,17 +37,39 @@ from .errors import (
 from .extensions import AsyncHermesExtensions
 from .files import AsyncFiles
 from .git_mutations import AsyncGitMutations
+from .group_attachments import AsyncGroupAttachments, GroupAttachment
+from .group_dialogue import AsyncGroupDialogue, GroupQuestion
 from .group_membership import AsyncGroupMembership, GroupRetirement
 from .integration_mutations import AsyncIntegrationMutations
 from .kanban import AsyncKanban
 from .local_models_administration import AsyncLocalModelAdministration
+from .profile_imports import (
+    AsyncProfileImports,
+    ProfileImportInventory,
+    ProfileImportReceipt,
+    ProfileImportReview,
+)
 from .provider_administration import AsyncProviderAdministration
 from .provider_auth import ProviderLoginError
+from .provider_endpoints import (
+    AsyncProviderEndpoints,
+    CustomEndpoint,
+    EndpointChanges,
+    EndpointInventory,
+    EndpointReceipt,
+    EndpointValidation,
+)
 from .provider_oauth import AsyncProviderOAuth
-from .schedule_mutations import AsyncScheduleMutations
+from .schedule_mutations import (
+    AsyncScheduleMutations,
+    ScheduleChanges,
+    ScheduleEditReceipt,
+    ScheduleSnapshot,
+)
 from .session_context import AsyncSessionContexts
 from .skill_administration import AsyncSkillAdministration
 from .transport import EmbeddedDriver
+from .worktree_archives import ArchiveReceipt, AsyncWorktreeArchives
 
 __all__ = [
     "Agent",
@@ -72,6 +94,25 @@ __all__ = [
     "AsyncGitMutations",
     "AsyncIntegrationMutations",
     "AsyncScheduleMutations",
+    "ScheduleChanges",
+    "ScheduleEditReceipt",
+    "ScheduleSnapshot",
+    "AsyncGroupAttachments",
+    "GroupAttachment",
+    "AsyncGroupDialogue",
+    "GroupQuestion",
+    "AsyncProfileImports",
+    "ProfileImportInventory",
+    "ProfileImportReceipt",
+    "ProfileImportReview",
+    "AsyncProviderEndpoints",
+    "CustomEndpoint",
+    "EndpointChanges",
+    "EndpointInventory",
+    "EndpointReceipt",
+    "EndpointValidation",
+    "AsyncWorktreeArchives",
+    "ArchiveReceipt",
     "AsyncSkillAdministration",
     "AsyncAuxiliaryAdministration",
     "AsyncFiles",
@@ -100,4 +141,4 @@ __all__ = [
     "ProviderLoginError",
 ]
 
-__version__ = "0.24.0"
+__version__ = "0.25.0"

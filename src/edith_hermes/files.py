@@ -46,3 +46,7 @@ class AsyncFiles:
 
     async def operation(self, request_id: str) -> FileReceipt:
         return cast(FileReceipt, await self.rpc.call('edith.desktop.v1.files.operation', profile=self.profile, request_id=request_id))
+
+    async def tree(self, path: str) -> dict[str, Any]:
+        """Bounded native snapshot; rejected for unsupported SSH filesystems."""
+        return cast(dict[str, Any], await self.rpc.call('edith.desktop.v1.files.tree', profile=self.profile, path=path))
