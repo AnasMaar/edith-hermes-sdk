@@ -49,6 +49,7 @@ from .live_audio import AsyncLiveAudio, LiveAudioAnswer, LiveAudioStatus
 from .local_models_administration import AsyncLocalModelAdministration
 from .memory_backends import AsyncMemoryBackends
 from .plugin_administration import AsyncPluginAdministration, PluginActionReceipt, PluginReview
+from .profile_archives import AsyncProfileArchives, ProfileArchiveUpload
 from .profile_imports import (
     AsyncProfileImports,
     ProfileImportInventory,
@@ -120,6 +121,8 @@ __all__ = [
     "AsyncGroupDialogue",
     "GroupQuestion",
     "AsyncProfileImports",
+    "AsyncProfileArchives",
+    "ProfileArchiveUpload",
     "ProfileImportInventory",
     "ProfileImportReceipt",
     "ProfileImportReview",
@@ -186,4 +189,4 @@ __all__ = [
     "ProviderLoginError",
 ]
 
-__version__ = "0.30.0"
+__version__ = "0.31.0"
