@@ -48,3 +48,12 @@ These bindings were checked against native Hermes checkout
 `04dc7f846cfa921f77c95d42703afdbd9495ca72`, particularly
 `hermes_cli/web_routers/{cron,files,git,skills,sessions}.py` and the Desktop API
 facades. Source provenance and native API ownership remain with Hermes.
+
+EDITH's optional versioned extension client is separate from native REST/RPC.
+`git_diff` preserves patch line endings, `git_apply` checks and atomically applies
+selected review patches with fixed Git arguments, and `cron_trigger` / `cron_operation`
+wrap the native scheduler claim in a durable request receipt. They require
+matching operations in `AsyncHermesExtensions.capabilities()` on the running host.
+An app restart can recover a completed receipt without executing again. A native
+server crash during execution remains uncertain and blocks another dispatch;
+neither missing history nor a timeout establishes failure.

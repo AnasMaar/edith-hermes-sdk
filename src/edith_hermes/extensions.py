@@ -1,7 +1,7 @@
 """Explicit bindings for product-owned versioned extensions, separate from native RPC."""
 from __future__ import annotations
 
-from typing import Any, Protocol, TypedDict, cast
+from typing import Any, Literal, Protocol, TypedDict, cast
 
 
 class ExtensionTransport(Protocol):
@@ -35,6 +35,14 @@ class GitObjectRequest(TypedDict):
     preferDisk: bool
 
 
+class CronTriggerReceipt(TypedDict, total=False):
+    requestId: str
+    profileId: str
+    jobId: str
+    status: Literal['running', 'completed', 'rejected', 'uncertain']
+    lastRunAt: str | None
+
+
 class AsyncHermesExtensions:
     """Capabilities must be checked on the running product extension deployment."""
     def __init__(self, connection: ExtensionTransport, *, profile: str):
@@ -60,6 +68,14 @@ class AsyncHermesExtensions:
     async def mcp_operation(self, request_id: str) -> dict[str, Any]:
         return cast(dict[str, Any], await self.connection.call("edith.desktop.v1.mcp.operation", profile=self.profile, request_id=request_id))
 
+    async def cron_trigger(self, job_id: str, *, request_id: str) -> CronTriggerReceipt:
+        """Dispatch through native cron's claim with a durable receipt. Never retry."""
+        return cast(CronTriggerReceipt, await self.connection.call('edith.desktop.v1.cron.trigger', profile=self.profile, job_id=job_id, request_id=request_id))
+
+    async def cron_operation(self, request_id: str) -> CronTriggerReceipt:
+        """Read the owning backend receipt after a lost reply or app restart."""
+        return cast(CronTriggerReceipt, await self.connection.call('edith.desktop.v1.cron.operation', profile=self.profile, request_id=request_id))
+
     async def git_inspect(self, path: str) -> GitInspection | None:
         """Host metadata for native Git review; capability-gated versioned extension."""
         return cast(GitInspection | None, await self.connection.call("edith.desktop.v1.git.inspect", profile=self.profile, path=path))
@@ -69,3 +85,14 @@ class AsyncHermesExtensions:
         if not 1 <= limit <= 16777216 or len(requests) > 32:
             raise ValueError("Git object reads exceed the supported bounds")
         return cast(list[dict[str, Any]], await self.connection.call("edith.desktop.v1.git.objects", profile=self.profile, path=path, requests=requests, limit=limit))
+
+    async def git_apply(self, path: str, diff: str, *, target: Literal['staged', 'unstaged', 'staged-and-unstaged'], reverse: bool = False) -> dict[str, Any]:
+        """Atomically apply a checked native review patch. No mutation retry."""
+        if target not in {'staged', 'unstaged', 'staged-and-unstaged'} or not diff or len(diff.encode()) > 8 * 1024 * 1024:
+            raise ValueError('Invalid Git patch')
+        return cast(dict[str, Any], await self.connection.call('edith.desktop.v1.git.apply', profile=self.profile, path=path, diff=diff, target=target, reverse=reverse))
+
+    async def git_diff(self, path: str, file: str, *, source: Literal['uncommitted', 'staged', 'unstaged'] = 'uncommitted') -> str:
+        """Byte-faithful text patch where native REST normalizes CRLF."""
+        result = await self.connection.call('edith.desktop.v1.git.diff', profile=self.profile, path=path, file=file, source=source)
+        return cast(str, result['diff'])

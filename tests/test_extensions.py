@@ -62,3 +62,22 @@ async def test_git_object_reads_are_bounded_and_profile_scoped():
     with pytest.raises(ValueError):
         await client.git_objects("C:/repo",requests*33)
     assert len(calls)==1
+
+
+@pytest.mark.asyncio
+async def test_native_review_patch_and_cron_receipt_bindings_do_not_retry():
+    calls=[]
+    class Connection:
+        async def call(self,method,**params):
+            calls.append((method,params));return {'diff':'byte-faithful\r\n'} if method.endswith('diff') else {'status':'running'}
+    client=AsyncHermesExtensions(Connection(),profile='family')
+    await client.git_apply('C:/repo','patch',target='staged',reverse=True)
+    await client.cron_trigger('job',request_id='request')
+    await client.cron_operation('request')
+    assert await client.git_diff('C:/repo','été.txt',source='unstaged')=='byte-faithful\r\n'
+    assert calls==[
+        ('edith.desktop.v1.git.apply',{'profile':'family','path':'C:/repo','diff':'patch','target':'staged','reverse':True}),
+        ('edith.desktop.v1.cron.trigger',{'profile':'family','job_id':'job','request_id':'request'}),
+        ('edith.desktop.v1.cron.operation',{'profile':'family','request_id':'request'}),
+        ('edith.desktop.v1.git.diff',{'profile':'family','path':'C:/repo','file':'été.txt','source':'unstaged'})]
+    with pytest.raises(ValueError):await client.git_apply('C:/repo','',target='unstaged')
