@@ -78,6 +78,26 @@ class ReasoningDefaultResult(TypedDict):
     effectiveEffort: str | None
 
 
+class SkillActionReceipt(TypedDict):
+    id: str
+    profileId: str
+    resourceId: str
+    kind: Literal['install', 'uninstall', 'update']
+    status: Literal['pending', 'running', 'completed', 'failed', 'uncertain']
+    pid: int | None
+    name: str
+    startedAt: float
+    completedAt: float | None
+    exitCode: int | None
+
+
+class SkillDocument(TypedDict):
+    content: str
+    revision: str
+    modifiedAtMs: float
+    sizeBytes: int
+
+
 class AsyncHermesExtensions:
     """Capabilities must be checked on the running product extension deployment."""
     def __init__(self, connection: ExtensionTransport, *, profile: str):
@@ -106,6 +126,26 @@ class AsyncHermesExtensions:
         return cast(ReasoningDefaultResult, await self.connection.call(
             'edith.desktop.v1.execution.reasoning_default', profile=self.profile,
             session_id=session_id))
+
+    async def skill_action(self, kind: Literal['install', 'uninstall', 'update'], resource: str, *, request_id: str) -> SkillActionReceipt:
+        """Start one owned native skill action; a running receipt is not success."""
+        return cast(SkillActionReceipt, await self.connection.call('edith.desktop.v1.skills.action',
+            profile=self.profile, request_id=request_id, kind=kind, resource=resource))
+
+    async def skill_operation(self, request_id: str) -> SkillActionReceipt:
+        """Reconcile a durable profile-owned receipt without replaying its mutation."""
+        return cast(SkillActionReceipt, await self.connection.call('edith.desktop.v1.skills.operation',
+            profile=self.profile, request_id=request_id))
+
+    async def skill_content(self, identity: str) -> SkillDocument:
+        """Read the owning native document with a content revision and metadata."""
+        return cast(SkillDocument, await self.connection.call('edith.desktop.v1.skills.content',
+            profile=self.profile, id=identity))
+
+    async def save_skill(self, identity: str, *, revision: str, content: str) -> SkillDocument:
+        """CAS wrapper around Hermes's existing foreground skill editor."""
+        return cast(SkillDocument, await self.connection.call('edith.desktop.v1.skills.save',
+            profile=self.profile, id=identity, revision=revision, content=content))
 
     async def mcp_revisions(self) -> dict[str, str]:
         result = await self.connection.call("edith.desktop.v1.mcp.revisions", profile=self.profile)

@@ -4,6 +4,42 @@ from edith_hermes import AsyncHermesExtensions
 
 
 @pytest.mark.asyncio
+async def test_skill_cli_actions_keep_profile_request_and_resource_identity_without_retry():
+    calls = []
+
+    class Connection:
+        async def call(self, method, **params):
+            calls.append((method, params))
+            return {"id": "once", "profileId": "door", "resourceId": "official/research", "kind": "install", "status": "running"}
+
+    client = AsyncHermesExtensions(Connection(), profile="door")
+    assert (await client.skill_action("install", "official/research", request_id="once"))["status"] == "running"
+    await client.skill_operation("once")
+    assert calls == [
+        ("edith.desktop.v1.skills.action", {"profile": "door", "request_id": "once", "kind": "install", "resource": "official/research"}),
+        ("edith.desktop.v1.skills.operation", {"profile": "door", "request_id": "once"}),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_skill_documents_preserve_canonical_identity_and_content_revision():
+    calls = []
+
+    class Connection:
+        async def call(self, method, **params):
+            calls.append((method, params))
+            return {"content": "# Draft", "revision": "fresh", "sizeBytes": 7, "modifiedAtMs": 12.0}
+
+    client = AsyncHermesExtensions(Connection(), profile="family")
+    assert (await client.skill_content("stable-skill"))["revision"] == "fresh"
+    await client.save_skill("stable-skill", revision="before", content="# Draft")
+    assert calls == [
+        ("edith.desktop.v1.skills.content", {"profile": "family", "id": "stable-skill"}),
+        ("edith.desktop.v1.skills.save", {"profile": "family", "id": "stable-skill", "revision": "before", "content": "# Draft"}),
+    ]
+
+
+@pytest.mark.asyncio
 async def test_reasoning_reset_is_transient_session_scoped_and_never_writes_profile_config():
     calls = []
 

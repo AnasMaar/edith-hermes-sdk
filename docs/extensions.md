@@ -29,3 +29,20 @@ full diff expansion. Objects use hexadecimal blob IDs; disk reads stay within
 the repository, including after symlink resolution. Missing, binary and oversized
 content have distinct results. The per-object ceiling is 16 MiB and the native
 batch budget is 32 MiB. File bytes retain their original line endings.
+
+`skill_action(kind, resource, request_id=...)` and `skill_operation(request_id)`
+wrap native Hermes skill installation/update/removal with a durable, profile-owned
+receipt. A pending/running or uncertain receipt is not completion. Reuse its ID
+to reconcile after a lost reply; do not automatically dispatch another action.
+The installed extension uses Hermes's bound `skills.manage` installation handler
+and its existing Skills Hub update/uninstall functions. It never forces updates
+over locally modified skills. A backend restart during an unconfirmed action
+can leave an uncertain receipt that requires investigation rather than replay.
+
+`skill_content(identity)` reads a stable canonical skill and its content revision.
+`save_skill(identity, revision=..., content=...)` wraps the native foreground
+editor under native profile/configuration locks. External changes detected before
+a save reject it. It is not a cross-process filesystem transaction; keep the
+draft and reload after a conflict. These calls require `skills.content` and
+`skills.save` in the running extension's capability inventory. The adapter
+should reconcile the actual content after a lost save reply, without writing twice.
