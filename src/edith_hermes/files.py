@@ -1,11 +1,19 @@
 """Versioned checked filesystem operations on the owning native Hermes host."""
 from __future__ import annotations
 
-from typing import Any, Protocol, TypedDict, cast
+from typing import Any, Literal, Protocol, TypedDict, cast
 
 
 class FileRPC(Protocol):
     async def call(self, method: str, **params: Any) -> Any: ...
+
+
+class FileCapabilities(TypedDict, total=False):
+    read: bool
+    write: bool
+    tree: bool
+    watch: bool
+    platform: Literal['win32', 'posix'] | None
 
 
 class FileSnapshot(TypedDict, total=False):
@@ -35,8 +43,8 @@ class AsyncFiles:
             raise ValueError('Files require a concrete owning profile')
         self.rpc, self.profile = rpc, profile
 
-    async def capabilities(self) -> dict[str, bool]:
-        return cast(dict[str, bool], await self.rpc.call('edith.desktop.v1.files.capabilities', profile=self.profile))
+    async def capabilities(self) -> FileCapabilities:
+        return cast(FileCapabilities, await self.rpc.call('edith.desktop.v1.files.capabilities', profile=self.profile))
 
     async def read(self, path: str, *, include_data: bool = True) -> FileSnapshot:
         return cast(FileSnapshot, await self.rpc.call('edith.desktop.v1.files.read', profile=self.profile, path=path, include_data=include_data))

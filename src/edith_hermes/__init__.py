@@ -23,6 +23,7 @@ from .auxiliary_administration import AsyncAuxiliaryAdministration
 from .channel_pairings import AsyncChannelPairings
 from .channels_administration import AsyncChannelAdministration
 from .client import AsyncEdithHermes, EdithHermes
+from .client_wake import AsyncClientWake
 from .command_center import AsyncCommandCenter
 from .deployment import AsyncDeployment
 from .desktop import AsyncHermesDesktop
@@ -42,6 +43,7 @@ from .group_dialogue import AsyncGroupDialogue, GroupQuestion
 from .group_membership import AsyncGroupMembership, GroupRetirement
 from .integration_mutations import AsyncIntegrationMutations
 from .kanban import AsyncKanban
+from .live_audio import AsyncLiveAudio, LiveAudioAnswer, LiveAudioStatus
 from .local_models_administration import AsyncLocalModelAdministration
 from .profile_imports import (
     AsyncProfileImports,
@@ -60,6 +62,7 @@ from .provider_endpoints import (
     EndpointValidation,
 )
 from .provider_oauth import AsyncProviderOAuth
+from .room_peers import AsyncRoomPeers, PeerGrant, PeerInvitation, PeerReceipt, PeerRoute
 from .schedule_mutations import (
     AsyncScheduleMutations,
     ScheduleChanges,
@@ -72,6 +75,13 @@ from .skill_documents import AsyncSkillDocuments, SkillFile
 from .skill_reviews import AsyncSkillReviews, SkillFinding, SkillReview
 from .transport import EmbeddedDriver
 from .worktree_archives import ArchiveReceipt, AsyncWorktreeArchives
+from .worktree_handoffs import (
+    AsyncWorktreeHandoffs,
+    CheckoutState,
+    HandoffArguments,
+    HandoffBinding,
+    HandoffReceipt,
+)
 
 __all__ = [
     "Agent",
@@ -115,6 +125,20 @@ __all__ = [
     "EndpointValidation",
     "AsyncWorktreeArchives",
     "ArchiveReceipt",
+    "AsyncWorktreeHandoffs",
+    "CheckoutState",
+    "HandoffArguments",
+    "HandoffBinding",
+    "HandoffReceipt",
+    "AsyncLiveAudio",
+    "LiveAudioAnswer",
+    "LiveAudioStatus",
+    "AsyncClientWake",
+    "AsyncRoomPeers",
+    "PeerGrant",
+    "PeerInvitation",
+    "PeerReceipt",
+    "PeerRoute",
     "AsyncSkillAdministration",
     "AsyncSkillDocuments",
     "SkillFile",
@@ -148,4 +172,4 @@ __all__ = [
     "ProviderLoginError",
 ]
 
-__version__ = "0.26.0"
+__version__ = "0.27.0"
