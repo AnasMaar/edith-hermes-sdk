@@ -37,6 +37,7 @@ from .git_mutations import AsyncGitMutations
 from .group_membership import AsyncGroupMembership, GroupRetirement
 from .integration_mutations import AsyncIntegrationMutations
 from .kanban import AsyncKanban
+from .local_models_administration import AsyncLocalModelAdministration
 from .provider_administration import AsyncProviderAdministration
 from .provider_auth import ProviderLoginError
 from .provider_oauth import AsyncProviderOAuth
@@ -77,6 +78,7 @@ __all__ = [
     "AsyncArtifactHistory",
     "AsyncCommandCenter",
     "AsyncKanban",
+    "AsyncLocalModelAdministration",
     "AuthenticationError",
     "ConflictError",
     "EdithHermes",
@@ -88,4 +90,4 @@ __all__ = [
     "ProviderLoginError",
 ]
 
-__version__ = "0.18.0"
+__version__ = "0.19.0"
