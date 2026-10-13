@@ -19,6 +19,7 @@ from .agent import (
 )
 from .artifact_history import AsyncArtifactHistory
 from .auxiliary_administration import AsyncAuxiliaryAdministration
+from .channels_administration import AsyncChannelAdministration
 from .client import AsyncEdithHermes, EdithHermes
 from .command_center import AsyncCommandCenter
 from .deployment import AsyncDeployment
@@ -42,6 +43,7 @@ from .provider_administration import AsyncProviderAdministration
 from .provider_auth import ProviderLoginError
 from .provider_oauth import AsyncProviderOAuth
 from .schedule_mutations import AsyncScheduleMutations
+from .session_context import AsyncSessionContexts
 from .skill_administration import AsyncSkillAdministration
 from .transport import EmbeddedDriver
 
@@ -79,6 +81,8 @@ __all__ = [
     "AsyncCommandCenter",
     "AsyncKanban",
     "AsyncLocalModelAdministration",
+    "AsyncChannelAdministration",
+    "AsyncSessionContexts",
     "AuthenticationError",
     "ConflictError",
     "EdithHermes",
@@ -90,4 +94,4 @@ __all__ = [
     "ProviderLoginError",
 ]
 
-__version__ = "0.19.0"
+__version__ = "0.20.0"
