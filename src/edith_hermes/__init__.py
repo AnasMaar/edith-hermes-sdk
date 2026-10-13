@@ -68,6 +68,8 @@ from .schedule_mutations import (
 )
 from .session_context import AsyncSessionContexts
 from .skill_administration import AsyncSkillAdministration
+from .skill_documents import AsyncSkillDocuments, SkillFile
+from .skill_reviews import AsyncSkillReviews, SkillFinding, SkillReview
 from .transport import EmbeddedDriver
 from .worktree_archives import ArchiveReceipt, AsyncWorktreeArchives
 
@@ -114,6 +116,11 @@ __all__ = [
     "AsyncWorktreeArchives",
     "ArchiveReceipt",
     "AsyncSkillAdministration",
+    "AsyncSkillDocuments",
+    "SkillFile",
+    "AsyncSkillReviews",
+    "SkillFinding",
+    "SkillReview",
     "AsyncAuxiliaryAdministration",
     "AsyncFiles",
     "AsyncGroupMembership",
@@ -141,4 +148,4 @@ __all__ = [
     "ProviderLoginError",
 ]
 
-__version__ = "0.25.0"
+__version__ = "0.26.0"

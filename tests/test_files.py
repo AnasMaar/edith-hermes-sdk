@@ -32,5 +32,5 @@ def test_file_profile_cannot_fall_back_to_all():
 @pytest.mark.asyncio
 async def test_tree_snapshot_uses_exact_owning_native_profile():
     rpc = RPC()
-    await AsyncFiles(rpc, profile='Door EDITH').tree('C:/workspace/été')
-    assert rpc.calls == [('edith.desktop.v1.files.tree', {'profile': 'Door EDITH', 'path': 'C:/workspace/été'})]
+    await AsyncFiles(rpc, profile='Door EDITH').tree('C:/workspace/été', workspace_root='C:/workspace')
+    assert rpc.calls == [('edith.desktop.v1.files.tree', {'profile': 'Door EDITH', 'path': 'C:/workspace/été', 'workspace_root': 'C:/workspace'})]
