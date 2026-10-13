@@ -1,5 +1,6 @@
 """Public EDITH Hermes SDK API."""
 
+from .administration import DesktopAdministration
 from .agent import (
     Agent,
     BoundAgent,
@@ -17,6 +18,7 @@ from .agent import (
     tool,
 )
 from .client import AsyncEdithHermes, EdithHermes
+from .deployment import AsyncDeployment
 from .desktop import AsyncHermesDesktop
 from .errors import (
     AuthenticationError,
@@ -27,7 +29,11 @@ from .errors import (
     ValidationError,
 )
 from .extensions import AsyncHermesExtensions
+from .git_mutations import AsyncGitMutations
+from .integration_mutations import AsyncIntegrationMutations
 from .provider_auth import ProviderLoginError
+from .schedule_mutations import AsyncScheduleMutations
+from .skill_administration import AsyncSkillAdministration
 from .transport import EmbeddedDriver
 
 __all__ = [
@@ -48,6 +54,12 @@ __all__ = [
     "AsyncEdithHermes",
     "AsyncHermesDesktop",
     "AsyncHermesExtensions",
+    "DesktopAdministration",
+    "AsyncDeployment",
+    "AsyncGitMutations",
+    "AsyncIntegrationMutations",
+    "AsyncScheduleMutations",
+    "AsyncSkillAdministration",
     "AuthenticationError",
     "ConflictError",
     "EdithHermes",
@@ -59,4 +71,4 @@ __all__ = [
     "ProviderLoginError",
 ]
 
-__version__ = "0.15.0"
+__version__ = "0.16.0"

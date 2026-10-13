@@ -296,6 +296,15 @@ creation receipts and revision-checked removal around native Hermes Git handlers
 Ignored files, active agents and locked checkouts prevent checked removal; a
 missing reply never triggers an automatic mutation retry.
 
+SDK 0.16 adds `DesktopAdministration` for existing provider, auxiliary/local
+model, memory, channel and profile-transfer REST APIs. `AsyncDeployment` reads
+Hermes's persistent installation identity; a missing identity is unsupported.
+`AsyncGitMutations`, `AsyncScheduleMutations`, `AsyncIntegrationMutations` and
+`AsyncSkillAdministration` bind explicit EDITH extensions for durable receipts
+and checked mutations. These extensions require capability discovery on the
+owning deployment; they are separate from Hermes's native RPC methods. Uncertain
+operations are reconciled by request ID and are never automatically dispatched twice.
+
 ```bash
 uv sync --all-extras --group dev
 uv run pytest
