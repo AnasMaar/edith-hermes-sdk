@@ -8,6 +8,15 @@ class ExtensionTransport(Protocol):
     async def call(self, method: str, *, timeout: float = 30, **params: Any) -> Any: ...
 
 
+class PreparedBlueprint(TypedDict):
+    profile: str
+    name: str
+    prompt: str
+    schedule: str
+    deliver: str
+    skills: list[str]
+
+
 class McpPatch(TypedDict, total=False):
     command: str
     args: list[str]
@@ -85,6 +94,13 @@ class AsyncHermesExtensions:
     async def cron_operation(self, request_id: str) -> CronTriggerReceipt:
         """Read the owning backend receipt after a lost reply or app restart."""
         return cast(CronTriggerReceipt, await self.connection.call('edith.desktop.v1.cron.operation', profile=self.profile, request_id=request_id))
+
+    async def prepare_blueprint(self, blueprint: str, values: dict[str, str]) -> PreparedBlueprint:
+        """Validate a native blueprint into a draft without creating or executing a job."""
+        result = await self.connection.call('edith.desktop.v1.cron.prepare', profile=self.profile, blueprint=blueprint, values=values)
+        if not isinstance(result, dict) or result.get('profile') != self.profile:
+            raise ValueError('The blueprint draft belongs to another profile')
+        return cast(PreparedBlueprint, result)
 
     async def group_activity(self, room_id: str) -> list[RoomToolFact]:
         """Read native hosted-member tool facts; independent of room orchestration."""

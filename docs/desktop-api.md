@@ -29,6 +29,12 @@ branch and worktree operations. Skills expose installed content reading/writing.
 Sessions expose bounded, owner-checked message pages. This release does not claim
 complete coverage of every Desktop REST route or Electron host service.
 
+`AsyncHermesExtensions.prepare_blueprint(key, values)` uses the explicit
+`edith.desktop.v1.cron.prepare` operation. It reuses Hermes's native blueprint
+validation and returns a profile-owned draft without creating or running a job.
+Discover that operation before offering an editable template; the native REST
+`instantiate` operation creates a job immediately and must not be used for preview.
+
 Every request carries a concrete profile. `all` is deliberately unavailable in
 this bound client: aggregate different profiles explicitly and retain their
 ownership metadata. Native job IDs and session IDs are opaque; display names
