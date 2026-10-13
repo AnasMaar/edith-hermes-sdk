@@ -20,7 +20,10 @@ async with AsyncHermesDesktop.remote(
 ```
 
 Available typed groups are `cron`, `files`, `git`, `skills` and `sessions`.
-Cron includes edit, trigger, execution history, delivery targets and blueprints.
+Cron includes atomic paused creation, edit, pause/resume/removal, trigger,
+execution history, delivery targets and blueprints. Mutation preflight rejects
+native cross-profile fallback; returned owner metadata is also checked. This
+preflight is not a server-side compare-and-swap transaction.
 Files expose native tree/text/data-URL operations. Git exposes review, mutation,
 branch and worktree operations. Skills expose installed content reading/writing.
 Sessions expose bounded, owner-checked message pages. This release does not claim

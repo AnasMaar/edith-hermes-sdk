@@ -10,6 +10,7 @@ from typing import Any, Literal, TypedDict, cast
 from urllib.parse import quote, urlsplit
 
 import httpx
+from typing_extensions import Required
 
 from .errors import error_from_response
 
@@ -25,6 +26,25 @@ class CronUpdates(TypedDict, total=False):
     reasoning_effort: str | None
     continuity: bool
     workdir: str | None
+
+
+class CronCreate(TypedDict, total=False):
+    schedule: Required[str]
+    name: str
+    prompt: str
+    paused: bool
+    paused_reason: str | None
+    deliver: str
+    repeat: int | str | None
+    skills: list[str] | None
+    model: str | None
+    provider: str | None
+    base_url: str | None
+    script: str | None
+    context_from: list[str] | None
+    enabled_toolsets: list[str] | None
+    workdir: str | None
+    no_agent: bool
 
 
 class CronJob(TypedDict, total=False):
@@ -53,7 +73,7 @@ def _segment(value: str) -> str:
 class AsyncHermesDesktop:
     def __init__(self, http: httpx.AsyncClient, profile: str, *, token: str | None = None,
                  owns_client: bool = False):
-        if not profile or profile == "all":
+        if not profile or profile != profile.strip() or profile.lower() == "all":
             raise ValueError("Desktop operations require a concrete profile")
         self._http, self.profile = http, profile
         self._token, self._owns_client = token, owns_client
@@ -129,20 +149,47 @@ class DesktopCron:
         self.client = client
 
     async def list(self) -> list[CronJob]:
-        return cast(list[CronJob], await self.client._request("GET", "/api/cron/jobs"))
+        rows = cast(list[CronJob], await self.client._request("GET", "/api/cron/jobs"))
+        for row in rows:
+            self._owner(row)
+        return rows
+
+    def _owner(self, row: CronJob) -> CronJob:
+        if row.get("profile") != self.client.profile:
+            raise ValueError("The returned schedule belongs to another profile")
+        return row
 
     async def get(self, job_id: str) -> CronJob:
-        return cast(CronJob, await self.client._request("GET", f"/api/cron/jobs/{_segment(job_id)}"))
+        return self._owner(cast(CronJob, await self.client._request("GET", f"/api/cron/jobs/{_segment(job_id)}")))
+
+    async def create(self, options: CronCreate) -> CronJob:
+        """Create through the native scheduler, including atomic paused creation."""
+        return self._owner(cast(CronJob, await self.client._request("POST", "/api/cron/jobs", body=options)))
+
+    async def pause(self, job_id: str) -> CronJob:
+        await self.get(job_id)
+        return self._owner(cast(CronJob, await self.client._request("POST", f"/api/cron/jobs/{_segment(job_id)}/pause")))
+
+    async def resume(self, job_id: str) -> CronJob:
+        await self.get(job_id)
+        return self._owner(cast(CronJob, await self.client._request("POST", f"/api/cron/jobs/{_segment(job_id)}/resume")))
+
+    async def remove(self, job_id: str) -> Any:
+        await self.get(job_id)
+        return await self.client._request("DELETE", f"/api/cron/jobs/{_segment(job_id)}")
 
     async def update(self, job_id: str, updates: CronUpdates) -> CronJob:
-        return cast(CronJob, await self.client._request("PUT", f"/api/cron/jobs/{_segment(job_id)}", body={"updates": updates}))
+        await self.get(job_id)
+        return self._owner(cast(CronJob, await self.client._request("PUT", f"/api/cron/jobs/{_segment(job_id)}", body={"updates": updates})))
 
     async def trigger(self, job_id: str, *, timeout: float = 86400) -> CronJob:
-        return cast(CronJob, await self.client._request("POST", f"/api/cron/jobs/{_segment(job_id)}/trigger", timeout=timeout))
+        await self.get(job_id)
+        return self._owner(cast(CronJob, await self.client._request("POST", f"/api/cron/jobs/{_segment(job_id)}/trigger", timeout=timeout)))
 
     async def runs(self, job_id: str, *, limit: int = 20) -> builtins.list[dict[str, Any]]:
         if not 1 <= limit <= 200:
             raise ValueError("Run history limit must be between 1 and 200")
+        await self.get(job_id)
         result = await self.client._request("GET", f"/api/cron/jobs/{_segment(job_id)}/runs", query={"limit": limit})
         return cast(builtins.list[dict[str, Any]], result["runs"])
 
@@ -155,7 +202,7 @@ class DesktopCron:
         return cast(builtins.list[dict[str, Any]], result["blueprints"])
 
     async def instantiate(self, blueprint: str, values: dict[str, str]) -> CronJob:
-        return cast(CronJob, await self.client._request("POST", "/api/cron/blueprints/instantiate", body={"blueprint": blueprint, "values": values}))
+        return self._owner(cast(CronJob, await self.client._request("POST", "/api/cron/blueprints/instantiate", body={"blueprint": blueprint, "values": values})))
 
 
 class DesktopFiles:
