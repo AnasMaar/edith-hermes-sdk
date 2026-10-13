@@ -73,6 +73,11 @@ class SkillInventoryEntry(TypedDict):
     invocationId: str | None
 
 
+class ReasoningDefaultResult(TypedDict):
+    value: None
+    effectiveEffort: str | None
+
+
 class AsyncHermesExtensions:
     """Capabilities must be checked on the running product extension deployment."""
     def __init__(self, connection: ExtensionTransport, *, profile: str):
@@ -95,6 +100,12 @@ class AsyncHermesExtensions:
         """Per-skill CAS, preserving secrets and unrelated native configuration."""
         return cast(SkillInventoryEntry, await self.connection.call('edith.desktop.v1.skills.toggle',
             profile=self.profile, id=identity, revision=revision, enabled=enabled))
+
+    async def reset_reasoning(self, session_id: str) -> ReasoningDefaultResult:
+        """Clear a session pin through the native profile resolver; no global write."""
+        return cast(ReasoningDefaultResult, await self.connection.call(
+            'edith.desktop.v1.execution.reasoning_default', profile=self.profile,
+            session_id=session_id))
 
     async def mcp_revisions(self) -> dict[str, str]:
         result = await self.connection.call("edith.desktop.v1.mcp.revisions", profile=self.profile)

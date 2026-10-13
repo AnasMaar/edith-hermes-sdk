@@ -62,6 +62,10 @@ These bindings were checked against native Hermes checkout
 facades. Source provenance and native API ownership remain with Hermes.
 
 EDITH's optional versioned extension client is separate from native REST/RPC.
+`reset_reasoning(session_id)` clears a session override using Hermes's profile
+reasoning resolver and native runtime persistence. It requires the advertised
+`execution.reasoning_default` operation, an idle initialized session and its
+owning profile. It does not change `agent.reasoning_effort` in profile config.
 `skill_inventory()` returns canonical file identities, revision tokens and optional
 legacy invocation aliases, including disabled skills. `toggle_skill(id, revision=...,
 enabled=...)` performs a per-skill compare-and-swap under Hermes's configuration
