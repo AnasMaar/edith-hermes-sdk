@@ -312,6 +312,12 @@ SDK 0.17 adds profile-scoped `AsyncProviderAdministration` and
 These explicit extensions retain the native Hermes configuration, filesystem
 and room engines; their operation receipts reconcile lost replies.
 
+SDK 0.18 adds `AsyncProviderOAuth` for profile-owned login recovery,
+`AsyncArtifactHistory` for native paginated session messages and originating
+files, `AsyncCommandCenter` for native status/log/usage data, and `AsyncKanban`
+for explicit-board reads from Hermes's optional Kanban plugin. These bindings
+do not create a second artifact, orchestration or board backend.
+
 ```bash
 uv sync --all-extras --group dev
 uv run pytest

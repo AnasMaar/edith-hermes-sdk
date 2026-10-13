@@ -17,8 +17,10 @@ from .agent import (
     ToolHost,
     tool,
 )
+from .artifact_history import AsyncArtifactHistory
 from .auxiliary_administration import AsyncAuxiliaryAdministration
 from .client import AsyncEdithHermes, EdithHermes
+from .command_center import AsyncCommandCenter
 from .deployment import AsyncDeployment
 from .desktop import AsyncHermesDesktop
 from .errors import (
@@ -34,8 +36,10 @@ from .files import AsyncFiles
 from .git_mutations import AsyncGitMutations
 from .group_membership import AsyncGroupMembership, GroupRetirement
 from .integration_mutations import AsyncIntegrationMutations
+from .kanban import AsyncKanban
 from .provider_administration import AsyncProviderAdministration
 from .provider_auth import ProviderLoginError
+from .provider_oauth import AsyncProviderOAuth
 from .schedule_mutations import AsyncScheduleMutations
 from .skill_administration import AsyncSkillAdministration
 from .transport import EmbeddedDriver
@@ -69,6 +73,10 @@ __all__ = [
     "AsyncGroupMembership",
     "GroupRetirement",
     "AsyncProviderAdministration",
+    "AsyncProviderOAuth",
+    "AsyncArtifactHistory",
+    "AsyncCommandCenter",
+    "AsyncKanban",
     "AuthenticationError",
     "ConflictError",
     "EdithHermes",
@@ -80,4 +88,4 @@ __all__ = [
     "ProviderLoginError",
 ]
 
-__version__ = "0.17.0"
+__version__ = "0.18.0"
