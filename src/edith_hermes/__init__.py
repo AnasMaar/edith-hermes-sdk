@@ -17,6 +17,7 @@ from .agent import (
     tool,
 )
 from .client import AsyncEdithHermes, EdithHermes
+from .desktop import AsyncHermesDesktop
 from .errors import (
     AuthenticationError,
     ConflictError,
@@ -44,6 +45,7 @@ __all__ = [
     "ToolHost",
     "tool",
     "AsyncEdithHermes",
+    "AsyncHermesDesktop",
     "AuthenticationError",
     "ConflictError",
     "EdithHermes",
@@ -55,4 +57,4 @@ __all__ = [
     "ProviderLoginError",
 ]
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
