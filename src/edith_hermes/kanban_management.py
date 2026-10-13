@@ -12,8 +12,8 @@ class ManagementRPC(Protocol):
     async def call(self, method: str, **params: Any) -> Any: ...
 
 
-TaskAction = Literal['link', 'unlink', 'upload', 'remove-attachment', 'reclaim', 'specify', 'reassign', 'terminate']
-BoardAction = Literal['create', 'edit', 'archive', 'remove', 'export', 'import']
+TaskAction = Literal['link', 'unlink', 'upload', 'remove-attachment', 'reclaim', 'specify', 'decompose', 'reassign', 'terminate', 'delete']
+BoardAction = Literal['create', 'edit', 'archive', 'remove', 'export', 'import', 'dispatch']
 
 
 class KanbanManagementCapabilities(TypedDict, total=False):
@@ -22,6 +22,7 @@ class KanbanManagementCapabilities(TypedDict, total=False):
     board_actions: list[BoardAction]
     orchestration: bool
     download: bool
+    workers: bool
 
 
 class KanbanManagementReceipt(TypedDict, total=False):
@@ -76,3 +77,6 @@ class AsyncKanbanManagement:
 
     async def attachment(self, board: str, attachment_id: int) -> dict[str, Any]:
         return cast(dict[str, Any], await self._call('attachment', board=board, attachment_id=attachment_id))
+
+    async def workers(self, board: str) -> dict[str, Any]:
+        return cast(dict[str, Any], await self._call('workers', board=board))

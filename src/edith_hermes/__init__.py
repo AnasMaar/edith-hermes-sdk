@@ -20,6 +20,7 @@ from .agent import (
 from .artifact_history import AsyncArtifactHistory
 from .audio import AsyncHermesAudio, SpeechResult, TranscriptionResult
 from .auxiliary_administration import AsyncAuxiliaryAdministration
+from .browser_control import AsyncBrowserControl, BrowserControlLease, BrowserControlSettings
 from .channel_pairings import AsyncChannelPairings
 from .channels_administration import AsyncChannelAdministration
 from .client import AsyncEdithHermes, EdithHermes
@@ -37,6 +38,7 @@ from .errors import (
     ValidationError,
 )
 from .extensions import AsyncHermesExtensions
+from .file_mutations import AsyncFileMutations
 from .files import AsyncFiles
 from .git_mutations import AsyncGitMutations, GitProviderState
 from .group_attachments import AsyncGroupAttachments, GroupAttachment
@@ -157,6 +159,10 @@ __all__ = [
     "SkillReview",
     "AsyncAuxiliaryAdministration",
     "AsyncFiles",
+    "AsyncFileMutations",
+    "AsyncBrowserControl",
+    "BrowserControlLease",
+    "BrowserControlSettings",
     "AsyncGroupMembership",
     "GroupRetirement",
     "AsyncProviderAdministration",
@@ -189,4 +195,4 @@ __all__ = [
     "ProviderLoginError",
 ]
 
-__version__ = "0.31.0"
+__version__ = "0.32.0"

@@ -6,7 +6,7 @@ from .extensions import ExtensionTransport
 
 class CommandActionReceipt(TypedDict, total=False):
     requestId: str
-    action: Literal['doctor', 'security-audit']
+    action: Literal['doctor', 'security-audit', 'gateway-start', 'gateway-stop']
     profile: str
     status: Literal['pending', 'uncertain', 'applied', 'completed', 'failed']
     pid: int
@@ -24,7 +24,7 @@ class AsyncCommandActions:
             'edith.desktop.v1.command-actions.capabilities', profile=self.profile))
 
     async def start(
-        self, *, request_id: str, action: Literal['doctor', 'security-audit']
+        self, *, request_id: str, action: Literal['doctor', 'security-audit', 'gateway-start', 'gateway-stop']
     ) -> CommandActionReceipt:
         return cast(CommandActionReceipt, await self.connection.call(
             'edith.desktop.v1.command-actions.start', profile=self.profile,

@@ -14,6 +14,7 @@ class FileCapabilities(TypedDict, total=False):
     tree: bool
     watch: bool
     platform: Literal['win32', 'posix'] | None
+    mutations: list[Literal['write', 'create-directory', 'copy', 'remove']]
 
 
 class FileSnapshot(TypedDict, total=False):
