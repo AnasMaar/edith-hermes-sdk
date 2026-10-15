@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <a href="pyproject.toml"><img src="https://img.shields.io/badge/Python-3.10%E2%80%933.13-b68bff?style=flat-square&amp;logo=python&amp;logoColor=white&amp;labelColor=251b30" alt="Python 3.10–3.13"></a>
+  <a href="pyproject.toml"><img src="https://img.shields.io/badge/Python-3.10%E2%80%933.14-b68bff?style=flat-square&amp;logo=python&amp;logoColor=white&amp;labelColor=251b30" alt="Python 3.10–3.14"></a>
   <a href="docs/convenience-api.md"><img src="https://img.shields.io/badge/API-Typed-f078c6?style=flat-square&amp;labelColor=251b30" alt="Typed Python API"></a>
   <a href="contracts/openapi"><img src="https://img.shields.io/badge/OpenAPI-3.1-dc86dc?style=flat-square&amp;labelColor=251b30" alt="OpenAPI 3.1 contracts"></a>
   <a href=".github/workflows/ci.yml"><img src="https://img.shields.io/badge/CI-GitHub_Actions-a985ed?style=flat-square&amp;logo=githubactions&amp;logoColor=white&amp;labelColor=251b30" alt="GitHub Actions CI configuration"></a>
@@ -33,7 +33,7 @@ A source push does not publish a PyPI package or new versioned container images.
 
 ## Quickstart
 
-Use Python 3.10–3.13 and a running Docker-compatible engine for this example.
+Use Python 3.10–3.14 and a running Docker-compatible engine for this example.
 From the root of this working checkout:
 
 ```bash

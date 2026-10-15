@@ -140,3 +140,12 @@ availability, and preservation of native disabled-service errors for catalog,
 accounts, tools and policy. Those disabled-service checks do not certify an
 authenticated hosted account. Provider OAuth, account rename/removal and policy
 mutation still require a deliberate live account test with credentials.
+
+SDK 0.34.1 also supports Python 3.14 (`>=3.10,<3.15`). This was verified in
+an independent Windows CPython 3.14.7 SDK environment using the frozen SDK lock
+with every extra and the development group: all 568 SDK tests passed, as did
+full Ruff and strict mypy checks. CI now includes Python 3.14 on Linux and
+Windows. The test runner's existing pytest-asyncio version emits Python 3.14
+event-loop-policy deprecation warnings; those APIs are scheduled for removal
+in Python 3.16, outside the supported range. Vendored contract files use LF
+checkouts so their published SHA-256 values remain valid on Windows.
