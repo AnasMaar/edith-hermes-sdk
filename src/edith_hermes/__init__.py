@@ -27,6 +27,7 @@ from .client import AsyncEdithHermes, EdithHermes
 from .client_wake import AsyncClientWake
 from .command_actions import AsyncCommandActions, CommandActionReceipt
 from .command_center import AsyncCommandCenter
+from .connectors import AsyncHermesConnectors, ConnectorCapabilities, UnsupportedConnectorOperation
 from .deployment import AsyncDeployment
 from .desktop import AsyncHermesDesktop
 from .errors import (
@@ -51,6 +52,7 @@ from .live_audio import AsyncLiveAudio, LiveAudioAnswer, LiveAudioStatus
 from .local_models_administration import AsyncLocalModelAdministration
 from .memory_backends import AsyncMemoryBackends
 from .plugin_administration import AsyncPluginAdministration, PluginActionReceipt, PluginReview
+from .plugin_catalog import AsyncPluginCatalog
 from .profile_archives import AsyncProfileArchives, ProfileArchiveUpload
 from .profile_imports import (
     AsyncProfileImports,
@@ -108,6 +110,10 @@ __all__ = [
     "tool",
     "AsyncEdithHermes",
     "AsyncHermesDesktop",
+    "AsyncHermesConnectors",
+    "ConnectorCapabilities",
+    "UnsupportedConnectorOperation",
+    "AsyncPluginCatalog",
     "AsyncHermesExtensions",
     "DesktopAdministration",
     "AsyncDeployment",
@@ -195,4 +201,4 @@ __all__ = [
     "ProviderLoginError",
 ]
 
-__version__ = "0.33.0"
+__version__ = "0.34.0"

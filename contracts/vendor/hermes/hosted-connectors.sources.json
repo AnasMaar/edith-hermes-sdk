@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "release": "v0.22.0",
+  "revision": "e06df9c2eae6901f4c88f464e0ae6e753c0428b8",
+  "bindings": [
+    "edith_hermes.connectors",
+    "edith_hermes.plugin_catalog"
+  ],
+  "sources": [
+    {
+      "path": "tui_gateway/contracts/connectors.py",
+      "url": "https://github.com/NousResearch/hermes-agent/blob/e06df9c2eae6901f4c88f464e0ae6e753c0428b8/tui_gateway/contracts/connectors.py",
+      "sha256": "53ce30cf53868bc173796327712bbfb10cd91e03eaf3bcbbc7ec91135cee7cbd"
+    },
+    {
+      "path": "tui_gateway/contracts/connectors_operation.py",
+      "url": "https://github.com/NousResearch/hermes-agent/blob/e06df9c2eae6901f4c88f464e0ae6e753c0428b8/tui_gateway/contracts/connectors_operation.py",
+      "sha256": "4c9d8cc40c7a5d678e43e7d890bdb5b45871dfbc4af32d8d3ab67c16b5525991"
+    },
+    {
+      "path": "tui_gateway/contracts/tools_mcp_plugins.py",
+      "url": "https://github.com/NousResearch/hermes-agent/blob/e06df9c2eae6901f4c88f464e0ae6e753c0428b8/tui_gateway/contracts/tools_mcp_plugins.py",
+      "sha256": "534e75329852231f2679d9e5aa0e0a55062e8fbe760fc4256059798f912136db"
+    }
+  ],
+  "fullOpenRpcSnapshotUpdated": false
+}
