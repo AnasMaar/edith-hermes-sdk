@@ -4,7 +4,8 @@
   "revision": "e06df9c2eae6901f4c88f464e0ae6e753c0428b8",
   "bindings": [
     "edith_hermes.connectors",
-    "edith_hermes.plugin_catalog"
+    "edith_hermes.plugin_catalog",
+    "edith_hermes.desktop_plugin_catalog"
   ],
   "sources": [
     {
@@ -21,6 +22,21 @@
       "path": "tui_gateway/contracts/tools_mcp_plugins.py",
       "url": "https://github.com/NousResearch/hermes-agent/blob/e06df9c2eae6901f4c88f464e0ae6e753c0428b8/tui_gateway/contracts/tools_mcp_plugins.py",
       "sha256": "534e75329852231f2679d9e5aa0e0a55062e8fbe760fc4256059798f912136db"
+    },
+    {
+      "path": "hermes_cli/web_routers/dashboard_ui.py",
+      "url": "https://github.com/NousResearch/hermes-agent/blob/e06df9c2eae6901f4c88f464e0ae6e753c0428b8/hermes_cli/web_routers/dashboard_ui.py",
+      "sha256": "febfe2b3d9c0f43970aa7fd59435775f71ef8bc0b76d3c48e4dd57e0a6d8921f"
+    },
+    {
+      "path": "hermes_cli/plugins_cmd_catalog.py",
+      "url": "https://github.com/NousResearch/hermes-agent/blob/e06df9c2eae6901f4c88f464e0ae6e753c0428b8/hermes_cli/plugins_cmd_catalog.py",
+      "sha256": "8e90f499d4e37f258c536af70440e873201d57b6ca4de37fbfb130c525978ac5"
+    },
+    {
+      "path": "hermes_cli/plugin_catalog.py",
+      "url": "https://github.com/NousResearch/hermes-agent/blob/e06df9c2eae6901f4c88f464e0ae6e753c0428b8/hermes_cli/plugin_catalog.py",
+      "sha256": "482f171fa1a26c44846fcdac818ac6b12ca81a03b680e1e3b1de0219cd6055bc"
     }
   ],
   "fullOpenRpcSnapshotUpdated": false

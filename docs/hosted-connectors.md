@@ -6,6 +6,9 @@ v0.22.0, commit `e06df9c2eae6901f4c88f464e0ae6e753c0428b8`.
 The [source manifest](../contracts/vendor/hermes/hosted-connectors.sources.json)
 records the exact source files and hashes inspected for these bindings.
 
+SDK 0.35 also exposes the complete catalog through the existing authenticated
+Desktop REST endpoint; see the scope distinction below.
+
 ```python
 from edith_hermes import AsyncHermesConnectors, AsyncPluginCatalog
 
@@ -106,6 +109,36 @@ rewritten for every unrelated Hermes method in this release.
 
 ## Failure and catalog boundaries
 
+### Complete catalog discovery (SDK 0.35)
+
+`await desktop.plugins.catalog()` uses `GET /api/dashboard/plugins/catalog`.
+It first checks `AsyncHermesDesktop.capabilities()` for that exact GET
+operation. If the caller already discovered the same deployment, it can pass
+that `DesktopCapabilities` snapshot with `capabilities=...` to avoid a second
+discovery request. A missing operation raises `RemoteError` with status 501;
+an explicitly disconnected discovery snapshot raises status 503. Authentication,
+network and native server errors propagate rather than returning fixture rows.
+The SDK sends the bound profile and backend authentication token as usual.
+
+The native response includes `entries`, `removed` and `generated_at`.
+Entries carry the reviewed SHA, repository, optional subdirectory, description,
+declared capabilities, environment-key names, host requirements and available
+catalog artwork. Removed entries retain the backend's recall reason and date.
+Types are available from `models.desktop_plugins` and
+`edith_hermes.desktop_plugin_catalog`. Results retain native fields and do not
+install, execute or authenticate any plugin.
+
+**Scope:** this existing Hermes REST route also merges its launch-home
+`installed`, `installed_sha`, `update_available` and `runtime_status` values.
+Its handler does not scope those annotations to the profile query parameter.
+They are preserved as native wire data and are **not** proof that the bound
+client profile owns that installation. Applications must discard those four
+annotations and join catalog metadata with the exact profile's
+`plugins.manage` `list` inventory before displaying installed or runtime state.
+Do not mutate plugins through global dashboard install routes to compensate.
+
+### Mutation and RPC boundaries
+
 No wrapper retries any call. A timeout, disconnect or cancelled local await can
 leave a mutation accepted remotely. Reconcile the original operation via
 `operation_status` or read the exact account/policy before deciding on another
@@ -149,3 +182,14 @@ Windows. The test runner's existing pytest-asyncio version emits Python 3.14
 event-loop-policy deprecation warnings; those APIs are scheduled for removal
 in Python 3.16, outside the supported range. Vendored contract files use LF
 checkouts so their published SHA-256 values remain valid on Windows.
+
+Verification for 0.35: all 577 SDK tests passed on Windows CPython 3.14.7 and
+3.12, including nine focused full-catalog REST cases; full Ruff, strict mypy
+and contract validation passed. The built wheel was installed normally into
+an independent Python 3.14.7 client and read the real isolated v0.22.0 and
+previous-runtime Desktop endpoints. Each returned 614 catalog entries with
+614 exact SHA pins and two removed entries at verification time. Missing and
+incorrect credentials were rejected with HTTP 401. Cross-profile metadata
+checks also confirmed why launch-home installed annotations must be discarded
+instead of being attributed to the requesting profile. No provider account,
+plugin install or existing user profile was changed for these checks.

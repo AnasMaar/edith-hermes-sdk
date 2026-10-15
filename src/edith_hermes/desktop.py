@@ -12,6 +12,7 @@ from urllib.parse import quote, urlsplit
 import httpx
 from typing_extensions import Required
 
+from .desktop_plugin_catalog import DesktopPlugins
 from .errors import error_from_response
 
 
@@ -82,6 +83,7 @@ class AsyncHermesDesktop:
         self.git = DesktopGit(self)
         self.skills = DesktopSkills(self)
         self.sessions = DesktopSessions(self)
+        self.plugins = DesktopPlugins(self)
 
     @classmethod
     def remote(cls, *, base_url: str, profile: str, token: str | None = None,

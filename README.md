@@ -290,6 +290,12 @@ these results are not certification of an arbitrary production deployment.
 
 ## Development
 
+SDK 0.35 adds `AsyncHermesDesktop.plugins.catalog()` for Hermes's existing
+complete curated plugin catalog REST endpoint, gated by the owning deployment's
+OpenAPI operation inventory. Catalog metadata remains separate from the route's
+launch-home installed-state annotations; use the exact profile's native RPC
+inventory for installation and runtime state.
+
 SDK 0.34 adds profile-owned [hosted connector and curated catalog bindings](docs/hosted-connectors.md):
 account aliases, exact account IDs, authorization-operation snapshots, revision-checked
 connector policy, pinned catalog lookup and native host-presence checks. These

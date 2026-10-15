@@ -5,6 +5,7 @@ keys retain their contract spelling; resource method keywords use snake_case.
 """
 
 from . import connectors, plugin_catalog
+from . import desktop_plugin_catalog as desktop_plugins
 from .generated import types_control_plane as control_plane
 from .generated import types_images as images
 from .generated import types_inference as inference
@@ -13,4 +14,4 @@ from .generated import types_providers as providers
 from .generated import types_runtime as runtime
 from .generated import types_tools as tools
 
-__all__ = ["connectors", "plugin_catalog", "control_plane", "images", "inference", "native", "providers", "runtime", "tools"]
+__all__ = ["connectors", "plugin_catalog", "desktop_plugins", "control_plane", "images", "inference", "native", "providers", "runtime", "tools"]
