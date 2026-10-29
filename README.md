@@ -4,7 +4,7 @@
 
 [![Python 3.10–3.14](https://img.shields.io/badge/Python-3.10--3.14-b68bff)](https://github.com/AnasMaar/edith-hermes-sdk/blob/main/pyproject.toml)
 [![Typed API](https://img.shields.io/badge/API-typed-f078c6)](https://anasmaar.github.io/edith-hermes-sdk/convenience-api/)
-[![Source version 0.35.0](https://img.shields.io/badge/source-0.35.0-e69acc)](https://github.com/AnasMaar/edith-hermes-sdk/blob/main/pyproject.toml)
+[![PyPI version](https://img.shields.io/pypi/v/edith-hermes-sdk?color=e69acc)](https://pypi.org/project/edith-hermes-sdk/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/AnasMaar/edith-hermes-sdk/blob/main/LICENSE)
 [![CI](https://github.com/AnasMaar/edith-hermes-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/AnasMaar/edith-hermes-sdk/actions/workflows/ci.yml)
 [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-8a6bd1)](https://anasmaar.github.io/edith-hermes-sdk/)
@@ -83,4 +83,4 @@ Install the development dependencies in `pyproject.toml`, then run `python -m py
 
 ## License
 
-The SDK is licensed under the [MIT License](https://github.com/AnasMaar/edith-hermes-sdk/blob/main/LICENSE). The vendored Hermes Agent contract is accompanied by the [upstream MIT license](src/edith_hermes/licenses/LICENSE.hermes-agent.txt); see [contract sources](contracts/vendor/README.md) for provenance.
+The SDK is licensed under the [MIT License](https://github.com/AnasMaar/edith-hermes-sdk/blob/main/LICENSE). The vendored Hermes Agent contract is accompanied by the [upstream MIT license](https://github.com/AnasMaar/edith-hermes-sdk/blob/main/src/edith_hermes/licenses/LICENSE.hermes-agent.txt); see [contract sources](https://github.com/AnasMaar/edith-hermes-sdk/blob/main/contracts/vendor/README.md) for provenance.

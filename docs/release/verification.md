@@ -19,9 +19,19 @@ passed on those downloaded files. The published wheel was installed into an empt
 Python 3.13 environment outside the checkout; isolated imports reported version 0.35.0
 from site-packages, and the offline tool example returned `2`.
 
-These are GitHub publication checks. PyPI publication separately requires the account's
-Trusted Publisher registration and a successful run of `publish-pypi.yml`; the
-[release guide](readiness.md) describes that process and digest reconciliation.
+[PyPI v0.35.0](https://pypi.org/project/edith-hermes-sdk/0.35.0/) was then published
+through GitHub OIDC by [the publishing workflow](https://github.com/AnasMaar/edith-hermes-sdk/actions/runs/40956421392).
+The public PyPI inventory reported exactly the wheel and source archive, with hashes
+matching the signed GitHub release. PyPI displays provenance for both files.
+A clean, cache-disabled installation from `https://pypi.org/simple` into a separate
+Python 3.13 environment passed isolated imports and the offline tool example (`2`).
+
+[A second publishing run](https://github.com/AnasMaar/edith-hermes-sdk/actions/runs/40956577853)
+verified both existing file hashes and skipped the upload step, confirming the completed
+release's retry path against the live registry. The first local JSON lookup briefly
+returned 404 after the successful upload; the later lookup returned the complete
+inventory. Account for registry propagation when reconciling a just-published release.
+The [release guide](readiness.md) describes publisher setup and digest reconciliation.
 
 ## GitHub CI and hosted-site acceptance
 
