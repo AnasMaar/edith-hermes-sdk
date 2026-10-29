@@ -53,6 +53,7 @@ jobs:
           uv run python scripts/generate_sdk.py
           git diff --exit-code
       - run: uv build
+      - run: uv run twine check --strict dist/*.whl dist/*.tar.gz
       - name: Inspect distributions and smoke test the installed wheel
         run: |
           uv run python scripts/verify_release_artifacts.py dist "$(uv run python -c 'from importlib.metadata import version; print(version("edith-hermes-sdk"))')"

@@ -29,6 +29,7 @@ uv run --frozen --group docs python scripts/generate_api_reference.py --check
 uv run --frozen --group docs mkdocs build --strict
 uv build --out-dir build/release-check
 uv run python scripts/verify_release_artifacts.py build/release-check v0.35.0 --require-license
+uv run twine check --strict build/release-check/*.whl build/release-check/*.tar.gz
 ```
 
 Use an empty output directory for the build. CI additionally checks a clean wheel installation, Redocly lint, containers, and PostgreSQL integration. Inspect both distributions before release; the wheel contains SDK, RPC, and control-plane Python packages, and the source archive includes contracts, scripts, examples, services, and project branding. Neither is intended to include a recovered Codex renderer. Signing and checksums attest the artifacts the workflow builds; they do not independently establish ownership or licensing.

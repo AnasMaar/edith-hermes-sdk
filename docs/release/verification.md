@@ -3,6 +3,29 @@
 This page records the release-preparation checks performed on October 29, 2026.
 It describes checked source and local fixtures; it does not certify untested services.
 
+## GitHub CI and hosted-site acceptance
+
+[CI for source revision 91a5554](https://github.com/AnasMaar/edith-hermes-sdk/actions/runs/40944137768)
+passed all 12 jobs: Linux Python 3.10–3.14, Windows Python 3.14, macOS Python 3.13,
+type/lint/contract/package checks, PostgreSQL integration and all three container images.
+The Linux Python 3.13 run passed **600 tests**. The non-root control-plane image probe
+checked its actual SQLite startup and build version; all images retained the SDK licence.
+
+[The documentation workflow](https://github.com/AnasMaar/edith-hermes-sdk/actions/runs/40944137812)
+deployed the site. Anonymous requests confirmed both the public MIT repository and the
+hosted documentation. The browser checks also passed against the actual GitHub Pages
+deployment: light/dark themes, search, source snippets, API signatures, 38 internal links,
+and mobile navigation without page-level overflow.
+
+CI exposed and helped fix two issues missed by the first local run: the pytest console
+entry point could not import the repository examples, and the built control-plane image
+reported an old hardcoded version. The final suite covers that build identity.
+
+Fresh wheel and source archives passed strict Twine **7.0.0** validation and clean wheel
+installation on Python 3.10 and 3.13. Their metadata version is 2.5; an older Twine tool
+selected by a pre-7 version constraint rejected that valid metadata. CI and release
+validation now use a compatible bounded Twine version.
+
 ## Verification layers
 
 The local SDK run passed **599 tests**. The documented recipes have **14 protocol/example

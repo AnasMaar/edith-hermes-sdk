@@ -1,17 +1,17 @@
-<p align="center"><img src="assets/branding/hermes-python-adk.svg" alt="Hermes Python ADK" width="100%"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/AnasMaar/edith-hermes-sdk/main/assets/branding/hermes-python-adk.svg" alt="Hermes Python ADK" width="100%"></p>
 
 # Hermes SDK for Python
 
-[![Python 3.10–3.14](https://img.shields.io/badge/Python-3.10--3.14-b68bff)](pyproject.toml)
-[![Typed API](https://img.shields.io/badge/API-typed-f078c6)](docs/convenience-api.md)
-[![Source version 0.35.0](https://img.shields.io/badge/source-0.35.0-e69acc)](pyproject.toml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Python 3.10–3.14](https://img.shields.io/badge/Python-3.10--3.14-b68bff)](https://github.com/AnasMaar/edith-hermes-sdk/blob/main/pyproject.toml)
+[![Typed API](https://img.shields.io/badge/API-typed-f078c6)](https://anasmaar.github.io/edith-hermes-sdk/convenience-api/)
+[![Source version 0.35.0](https://img.shields.io/badge/source-0.35.0-e69acc)](https://github.com/AnasMaar/edith-hermes-sdk/blob/main/pyproject.toml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/AnasMaar/edith-hermes-sdk/blob/main/LICENSE)
 [![CI](https://github.com/AnasMaar/edith-hermes-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/AnasMaar/edith-hermes-sdk/actions/workflows/ci.yml)
 [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-8a6bd1)](https://anasmaar.github.io/edith-hermes-sdk/)
 
 Build applications that provision and control Hermes runtimes, or connect to an existing Hermes deployment. The SDK provides typed control-plane resources, native RPC access, and separate bindings for Hermes Desktop HTTP routes.
 
-[Documentation](https://anasmaar.github.io/edith-hermes-sdk/) · [Getting started](docs/getting-started/installation.md) · [Runtimes](docs/guides/runtimes.md) · [Native chat](docs/guides/native-chat.md) · [Examples](examples/README.md) · [Source](https://github.com/AnasMaar/edith-hermes-sdk)
+[Documentation](https://anasmaar.github.io/edith-hermes-sdk/) · [Getting started](https://anasmaar.github.io/edith-hermes-sdk/getting-started/installation/) · [Runtimes](https://anasmaar.github.io/edith-hermes-sdk/guides/runtimes/) · [Native chat](https://anasmaar.github.io/edith-hermes-sdk/guides/native-chat/) · [Examples](https://github.com/AnasMaar/edith-hermes-sdk/blob/main/examples/README.md) · [Source](https://github.com/AnasMaar/edith-hermes-sdk)
 
 ## Install
 
@@ -46,7 +46,7 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-Run the complete version with `python examples/local_tool.py`. To send a prompt to a configured runtime, follow [first chat](docs/getting-started/first-chat.md). To provision a new runtime, see [runtimes](docs/guides/runtimes.md).
+Run the complete version with `python examples/local_tool.py`. To send a prompt to a configured runtime, follow [first chat](https://anasmaar.github.io/edith-hermes-sdk/getting-started/first-chat/). To provision a new runtime, see [runtimes](https://anasmaar.github.io/edith-hermes-sdk/guides/runtimes/).
 
 ## Choose a client
 
@@ -57,17 +57,17 @@ Run the complete version with `python examples/local_tool.py`. To send a prompt 
 | Receive native events and answer server requests | `profile.connect()` | Control-plane gateway WebSocket and compatible native runtime |
 | Work with native Desktop schedules, files, Git and skills | `AsyncHermesDesktop.remote()` | Hermes Desktop HTTP server |
 
-A native Desktop URL is not a control-plane URL. Connecting to an existing Hermes installation through the control plane requires a registered instance and profile. A generated method reflects the pinned contract, not a guarantee that a particular server supports it. See [transport selection](docs/getting-started/installation.md).
+A native Desktop URL is not a control-plane URL. Connecting to an existing Hermes installation through the control plane requires a registered instance and profile. A generated method reflects the pinned contract, not a guarantee that a particular server supports it. See [transport selection](https://anasmaar.github.io/edith-hermes-sdk/getting-started/installation/).
 
 ## Documentation
 
-- [First chat and approvals](docs/getting-started/first-chat.md)
-- [Runtimes, Python tools, profiles and models](docs/guides/runtimes.md)
-- [Existing native sessions, events and approvals](docs/guides/native-chat.md)
-- [Desktop, connectors, plugins, schedules and workspaces](docs/guides/desktop.md)
-- [Architecture](docs/guides/architecture.md), [authentication](docs/guides/authentication.md), and [reliability](docs/guides/reliability.md)
-- [Control-plane configuration](docs/configuration.md), [provider authentication](docs/provider-auth.md), and [WebSocket protocol](contracts/websocket/gateway.md)
-- [Convenience API coverage](docs/convenience-api.md) and [Desktop API](docs/desktop-api.md)
+- [First chat and approvals](https://anasmaar.github.io/edith-hermes-sdk/getting-started/first-chat/)
+- [Runtimes, Python tools, profiles and models](https://anasmaar.github.io/edith-hermes-sdk/guides/runtimes/)
+- [Existing native sessions, events and approvals](https://anasmaar.github.io/edith-hermes-sdk/guides/native-chat/)
+- [Desktop, connectors, plugins, schedules and workspaces](https://anasmaar.github.io/edith-hermes-sdk/guides/desktop/)
+- [Architecture](https://anasmaar.github.io/edith-hermes-sdk/guides/architecture/), [authentication](https://anasmaar.github.io/edith-hermes-sdk/guides/authentication/), and [reliability](https://anasmaar.github.io/edith-hermes-sdk/guides/reliability/)
+- [Control-plane configuration](https://anasmaar.github.io/edith-hermes-sdk/configuration/), [provider authentication](https://anasmaar.github.io/edith-hermes-sdk/provider-auth/), and [WebSocket protocol](https://github.com/AnasMaar/edith-hermes-sdk/blob/main/contracts/websocket/gateway.md)
+- [Convenience API coverage](https://anasmaar.github.io/edith-hermes-sdk/convenience-api/) and [Desktop API](https://anasmaar.github.io/edith-hermes-sdk/desktop-api/)
 
 ## Development
 
@@ -75,4 +75,4 @@ Install the development dependencies in `pyproject.toml`, then run `python -m py
 
 ## License
 
-The SDK is licensed under the [MIT License](LICENSE). The vendored Hermes Agent contract is accompanied by the [upstream MIT license](src/edith_hermes/licenses/LICENSE.hermes-agent.txt); see [contract sources](contracts/vendor/README.md) for provenance.
+The SDK is licensed under the [MIT License](https://github.com/AnasMaar/edith-hermes-sdk/blob/main/LICENSE). The vendored Hermes Agent contract is accompanied by the [upstream MIT license](src/edith_hermes/licenses/LICENSE.hermes-agent.txt); see [contract sources](contracts/vendor/README.md) for provenance.

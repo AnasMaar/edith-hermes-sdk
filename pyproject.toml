@@ -68,6 +68,7 @@ dev = [
   "respx>=0.21,<1",
   "ruff>=0.8,<1",
   "sqlalchemy[asyncio]>=2.0,<3",
+  "twine>=7,<8",
   "uvicorn>=0.32,<1",
   "websockets>=14,<16",
 ]

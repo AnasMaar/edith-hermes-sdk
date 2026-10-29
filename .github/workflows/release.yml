@@ -34,6 +34,7 @@ jobs:
       - run: uv run --frozen --group docs mkdocs build --strict
       - run: uv build
       - run: uv run python scripts/verify_release_artifacts.py dist "$GITHUB_REF_NAME" --require-license
+      - run: uv run twine check --strict dist/*.whl dist/*.tar.gz
 
   release:
     needs: verify
@@ -45,6 +46,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
       - run: uv build
+      - run: uv run twine check --strict dist/*.whl dist/*.tar.gz
       - name: Inspect distributions and smoke test the installed wheel
         run: |
           uv run python scripts/verify_release_artifacts.py dist "$GITHUB_REF_NAME" --require-license
