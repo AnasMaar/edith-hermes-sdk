@@ -15,7 +15,15 @@ Build applications that provision and control Hermes runtimes, or connect to an 
 
 ## Install
 
-Python 3.10–3.14 is supported. Until a registry release is available, install from a checkout:
+Python 3.10–3.14 is supported. Install a published release from PyPI:
+
+~~~bash
+python -m pip install edith-hermes-sdk
+python -m pip install "edith-hermes-sdk[control-plane]"  # Local control plane
+python -m pip install "edith-hermes-sdk[streaming]"      # Remote WebSocket and event streaming
+~~~
+
+For development or an unpublished version, install from a checkout:
 
 ```bash
 git clone https://github.com/AnasMaar/edith-hermes-sdk.git

@@ -1,14 +1,12 @@
 # Installation and transport selection
 
-Install Python 3.10–3.14, then get a checkout:
+Install Python 3.10–3.14 and create a virtual environment:
 
 ~~~sh
-git clone https://github.com/AnasMaar/edith-hermes-sdk.git
-cd edith-hermes-sdk
 python -m venv .venv
 ~~~
 
-Activate the environment in your shell before installing:
+Activate the environment in your shell:
 
 === "Bash"
 
@@ -22,7 +20,26 @@ Activate the environment in your shell before installing:
     .venv/Scripts/Activate.ps1
     ~~~
 
-From the repository root, run:
+Install a published release from PyPI:
+
+~~~sh
+python -m pip install edith-hermes-sdk
+python -m pip install "edith-hermes-sdk[control-plane]"  # Local control plane and providers
+python -m pip install "edith-hermes-sdk[streaming]"      # Remote WebSocket and event streaming
+~~~
+
+Extras can be combined: `python -m pip install "edith-hermes-sdk[control-plane,streaming]"`. To pin the release, use `edith-hermes-sdk==0.35.0`.
+
+## Install from source
+
+For development or an unpublished version, get a checkout:
+
+~~~sh
+git clone https://github.com/AnasMaar/edith-hermes-sdk.git
+cd edith-hermes-sdk
+~~~
+
+With your environment still active, run from the repository root:
 
 ```bash
 python -m pip install .
@@ -30,7 +47,7 @@ python -m pip install ".[control-plane]"  # Local control plane and providers
 python -m pip install ".[streaming]"      # Remote WebSocket and event streaming
 ```
 
-These are checkout installs; they do not assume a package has been published. Extras can be combined: `python -m pip install ".[control-plane,streaming]"`.
+These commands install your checkout. Extras can be combined: `python -m pip install ".[control-plane,streaming]"`.
 
 ## Select the endpoint
 

@@ -10,6 +10,8 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -35,6 +37,18 @@ jobs:
       - run: uv build
       - run: uv run python scripts/verify_release_artifacts.py dist "$GITHUB_REF_NAME" --require-license
       - run: uv run twine check --strict dist/*.whl dist/*.tar.gz
+      - name: Smoke test the built wheel
+        run: |
+          uv venv /tmp/sdk-wheel-smoke
+          uv pip install --python /tmp/sdk-wheel-smoke/bin/python dist/*.whl
+          cd /tmp
+          /tmp/sdk-wheel-smoke/bin/python -c 'import edith_hermes, edith_hermes_rpc; print(edith_hermes.__version__)'
+      - run: cd dist && sha256sum *.whl *.tar.gz > SHA256SUMS
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sdk-release-distributions
+          path: dist/
+          if-no-files-found: error
 
   release:
     needs: verify
@@ -43,27 +57,20 @@ jobs:
       contents: write
       id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-      - run: uv build
-      - run: uv run twine check --strict dist/*.whl dist/*.tar.gz
-      - name: Inspect distributions and smoke test the installed wheel
-        run: |
-          uv run python scripts/verify_release_artifacts.py dist "$GITHUB_REF_NAME" --require-license
-          uv venv /tmp/sdk-wheel-smoke
-          uv pip install --python /tmp/sdk-wheel-smoke/bin/python dist/*.whl
-          cd /tmp
-          /tmp/sdk-wheel-smoke/bin/python -c 'import edith_hermes, edith_hermes_rpc; print(edith_hermes.__version__)'
-      - run: cd dist && sha256sum * > SHA256SUMS
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: sdk-release-distributions
+          path: dist
+      - run: cd dist && sha256sum --check --strict SHA256SUMS
       - uses: sigstore/gh-action-sigstore-python@v3.4.0
         with:
           inputs: |
             dist/*.whl
             dist/*.tar.gz
-          upload-signing-artifacts: true
       - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
+          overwrite_files: false
           files: |
             dist/*.whl
             dist/*.tar.gz
@@ -72,6 +79,7 @@ jobs:
 
   container:
     needs: verify
+    if: vars.PUBLISH_GHCR_IMAGES == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
