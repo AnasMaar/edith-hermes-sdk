@@ -15,6 +15,7 @@ import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
+from edith_hermes import __version__
 from edith_hermes.generated.operations import OPERATIONS
 
 from .auth import Authenticator, Identity
@@ -92,7 +93,7 @@ def create_app(
 
     app = FastAPI(
         title="EDITH Hermes Production Control Plane",
-        version="0.4.0",
+        version=__version__,
         lifespan=lifespan,
     )
     app.state.database = database
@@ -125,7 +126,7 @@ def create_app(
 
     @app.get("/health/live")
     async def live() -> dict[str, Any]:
-        return {"ok": True, "version": "0.4.0"}
+        return {"ok": True, "version": __version__}
 
     @app.get("/health/ready")
     async def ready() -> dict[str, Any]:
@@ -418,7 +419,7 @@ def create_app(
             result = {
                 "protocolVersion": "2025-06-18",
                 "capabilities": {"tools": {"listChanged": False}},
-                "serverInfo": {"name": "edith-hermes-tool-bridge", "version": "0.4.0"},
+                "serverInfo": {"name": "edith-hermes-tool-bridge", "version": __version__},
             }
         elif method == "tools/list":
             result = {

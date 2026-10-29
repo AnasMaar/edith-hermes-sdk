@@ -82,6 +82,8 @@ jobs:
           push: false
           load: true
           tags: edith-hermes-${{ matrix.name }}:ci
+      - name: Check licences are included in every image
+        run: docker run --rm --entrypoint python edith-hermes-${{ matrix.name }}:ci -c 'from pathlib import Path; assert "Permission is hereby granted" in Path("/app/LICENSE").read_text(); assert Path("/app/NOTICE.md").is_file()'
       - name: Check default non-root control-plane startup
         if: matrix.name == 'control-plane'
         run: docker run --rm -i -e EDITH_RUNTIME_PROVIDERS=external --entrypoint python edith-hermes-control-plane:ci - < scripts/verify_control_plane_image.py

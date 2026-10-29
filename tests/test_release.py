@@ -20,6 +20,24 @@ def test_release_tag_must_match_version():
     assert subprocess.run([sys.executable, str(script), f"v{__version__}"], check=False).returncode == 0
     assert subprocess.run([sys.executable, str(script), "v0.0.0"], check=False).returncode != 0
 
+
+async def test_control_plane_reports_the_installed_sdk_build_version():
+    import httpx
+    from edith_hermes_control_plane.app import create_app
+    from edith_hermes_control_plane.config import Settings
+
+    app = create_app(
+        Settings(database_url="sqlite+aiosqlite:///:memory:", enabled_runtime_providers=["external"]),
+        start_worker=False,
+    )
+    async with app.router.lifespan_context(app), httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://release-test"
+    ) as client:
+        response = await client.get("/health/live")
+    assert response.status_code == 200
+    assert response.json()["version"] == __version__
+    assert app.version == __version__
+
 @pytest.mark.skipif(sys.version_info < (3, 11), reason="release preflight runs on Python 3.13")
 def test_release_license_preflight(tmp_path):
     script = ROOT / "scripts" / "check_release_license.py"

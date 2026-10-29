@@ -1,7 +1,7 @@
 FROM python:3.13-slim
 
 WORKDIR /app
-COPY pyproject.toml README.md /app/
+COPY pyproject.toml README.md LICENSE NOTICE.md /app/
 COPY src /app/src
 COPY services/mock_server /app/services/mock_server
 RUN pip install --no-cache-dir . fastapi uvicorn

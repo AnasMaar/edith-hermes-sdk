@@ -11,7 +11,7 @@ COPY --from=trivy /usr/local/bin/trivy /usr/local/bin/trivy
 COPY --from=cosign /ko-app/cosign /usr/local/bin/cosign
 
 WORKDIR /app
-COPY pyproject.toml uv.lock README.md /app/
+COPY pyproject.toml uv.lock README.md LICENSE NOTICE.md /app/
 COPY src /app/src
 COPY services/control_plane /app/services/control_plane
 RUN pip install --no-cache-dir ".[control-plane]"
