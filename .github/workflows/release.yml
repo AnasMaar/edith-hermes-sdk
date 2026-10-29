@@ -5,12 +5,10 @@ on:
     tags: ["v*"]
 
 permissions:
-  contents: write
-  packages: write
-  id-token: write
+  contents: read
 
 jobs:
-  release:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,9 +16,42 @@ jobs:
         with:
           python-version: "3.13"
       - uses: astral-sh/setup-uv@v6
-      - run: uv sync --frozen --group dev
+      - run: uv sync --frozen --group dev --group docs
+      - name: Check release tag matches package version
+        run: uv run python scripts/check_release_tag.py "$GITHUB_REF_NAME"
+      - name: Check license prerequisites
+        run: uv run python scripts/check_release_license.py
       - run: uv run pytest
+      - run: uv run ruff check .
+      - run: uv run mypy src/edith_hermes src/edith_hermes_rpc
+      - run: uv run mypy --ignore-missing-imports services/control_plane/edith_hermes_control_plane services/runtime_bridge/edith_hermes_runtime_bridge
+      - run: uv run python scripts/validate_contracts.py
+      - name: Check generated SDK
+        run: |
+          uv run python scripts/generate_sdk.py
+          git diff --exit-code -- src/edith_hermes/generated
+      - run: uv run --frozen --group docs python scripts/generate_api_reference.py --check
+      - run: uv run --frozen --group docs mkdocs build --strict
       - run: uv build
+      - run: uv run python scripts/verify_release_artifacts.py dist "$GITHUB_REF_NAME" --require-license
+
+  release:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv build
+      - name: Inspect distributions and smoke test the installed wheel
+        run: |
+          uv run python scripts/verify_release_artifacts.py dist "$GITHUB_REF_NAME" --require-license
+          uv venv /tmp/sdk-wheel-smoke
+          uv pip install --python /tmp/sdk-wheel-smoke/bin/python dist/*.whl
+          cd /tmp
+          /tmp/sdk-wheel-smoke/bin/python -c 'import edith_hermes, edith_hermes_rpc; print(edith_hermes.__version__)'
       - run: cd dist && sha256sum * > SHA256SUMS
       - uses: sigstore/gh-action-sigstore-python@v3.4.0
         with:
@@ -38,7 +69,11 @@ jobs:
             dist/SHA256SUMS
 
   container:
+    needs: verify
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     strategy:
       matrix:
         include:

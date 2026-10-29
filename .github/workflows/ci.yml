@@ -4,6 +4,10 @@ on:
   push:
     branches: [main, "verification/**"]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   test:
@@ -16,6 +20,8 @@ jobs:
         include:
           - os: windows-latest
             python: "3.14"
+          - os: macos-latest
+            python: "3.13"
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -47,6 +53,13 @@ jobs:
           uv run python scripts/generate_sdk.py
           git diff --exit-code
       - run: uv build
+      - name: Inspect distributions and smoke test the installed wheel
+        run: |
+          uv run python scripts/verify_release_artifacts.py dist "$(uv run python -c 'from importlib.metadata import version; print(version("edith-hermes-sdk"))')"
+          uv venv /tmp/sdk-wheel-smoke
+          uv pip install --python /tmp/sdk-wheel-smoke/bin/python dist/*.whl
+          cd /tmp
+          /tmp/sdk-wheel-smoke/bin/python -c 'import edith_hermes, edith_hermes_rpc; print(edith_hermes.__version__)'
 
   containers:
     runs-on: ubuntu-latest

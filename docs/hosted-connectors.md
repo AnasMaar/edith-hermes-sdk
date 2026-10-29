@@ -3,7 +3,7 @@
 SDK 0.34 adds `AsyncHermesConnectors` and `AsyncPluginCatalog` around Hermes's
 existing RPC transport. They use the owner/account contracts from Hermes
 v0.22.0, commit `e06df9c2eae6901f4c88f464e0ae6e753c0428b8`.
-The [source manifest](../contracts/vendor/hermes/hosted-connectors.sources.json)
+The [source manifest](https://github.com/AnasMaar/edith-hermes-sdk/blob/main/contracts/vendor/hermes/hosted-connectors.sources.json)
 records the exact source files and hashes inspected for these bindings.
 
 SDK 0.35 also exposes the complete catalog through the existing authenticated

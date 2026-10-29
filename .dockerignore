@@ -1,5 +1,6 @@
 .git
 .venv
+.venv-*
 .integration
 .demo
 .edith-hermes
@@ -8,3 +9,8 @@ __pycache__
 .env
 .env.*
 dist
+site
+build
+.mypy_cache
+.pytest_cache
+.ruff_cache

@@ -89,7 +89,7 @@ set `EDITH_RUNTIME_BRIDGE_IMAGE` to that image/digest. Existing v0.3.1 image tag
 in the reference deployment are older releases, not automatically updated by a
 source push.
 
-[`deploy/control-plane/production.yaml`](../deploy/control-plane/production.yaml) explicitly opts
+[`deploy/control-plane/production.yaml`](https://github.com/AnasMaar/edith-hermes-sdk/blob/main/deploy/control-plane/production.yaml) explicitly opts
 into PostgreSQL, OIDC, Kubernetes, digest pinning, Trivy and Cosign/KMS. It is one deployment
 profile, not an SDK requirement.
 

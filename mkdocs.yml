@@ -1,0 +1,154 @@
+site_name: Hermes SDK for Python
+site_description: Build agents, connect existing Hermes runtimes, and control them from Python.
+site_url: https://anasmaar.github.io/edith-hermes-sdk/
+repo_name: AnasMaar/edith-hermes-sdk
+repo_url: https://github.com/AnasMaar/edith-hermes-sdk
+edit_uri: ""
+strict: true
+docs_dir: docs
+site_dir: site
+exclude_docs: |
+  /verification-*.md
+  /local-verification.md
+  /docker-recovery-*.md
+  /desktop-extensions-*.md
+
+theme:
+  name: material
+  custom_dir: docs/overrides
+  language: en
+  font: false
+  logo: assets/hermes-mark.svg
+  favicon: assets/hermes-mark.svg
+  icon:
+    repo: fontawesome/brands/github
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.tracking
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - toc.follow
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src, services/control_plane]
+          options:
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: false
+            show_signature_annotations: true
+            separate_signature: true
+            members_order: source
+            inherited_members: false
+            merge_init_into_class: true
+            show_if_no_docstring: true
+            filters: ["!^_"]
+            docstring_options:
+              ignore_init_summary: true
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+extra_css:
+  - assets/stylesheets/extra.css
+extra_javascript:
+  - assets/javascripts/docs.js
+extra:
+  generator: false
+  version:
+    provider: ""
+
+validation:
+  nav:
+    omitted_files: info
+  links:
+    not_found: warn
+    unrecognized_links: warn
+    anchors: warn
+
+nav:
+  - Overview:
+      - index.md
+      - Choose your integration: guides/architecture.md
+      - Support and compatibility: compatibility.md
+  - Get started:
+      - Install: getting-started/installation.md
+      - Your first conversation: getting-started/first-chat.md
+      - Runtimes and Python tools: guides/runtimes.md
+      - Native sessions and events: guides/native-chat.md
+      - Desktop API: guides/desktop.md
+  - Cookbook:
+      - cookbook/index.md
+      - Chat and live events: cookbook/chat-and-events.md
+      - Python tools: cookbook/tools.md
+      - Schedules and receipts: cookbook/schedules.md
+      - Plugins and connectors: cookbook/integrations.md
+      - Bots and groups: cookbook/bot-groups.md
+  - Guides:
+      - Agent API patterns: convenience-api.md
+      - Authentication: guides/authentication.md
+      - Reliability and lifecycle: guides/reliability.md
+      - Control-plane configuration: configuration.md
+      - Provider sign-in: provider-auth.md
+      - Hosted connectors: hosted-connectors.md
+      - Desktop operations: desktop-api.md
+      - Versioned backend extensions: extensions.md
+  - API reference:
+      - reference/index.md
+      - Agents and runtimes: reference/agents.md
+      - Clients and transports: reference/clients.md
+      - Resource handles: reference/resources.md
+      - Native Desktop API: reference/desktop.md
+      - Integrations and providers: reference/integrations.md
+      - Administration: reference/administration.md
+      - Collaboration and workspace: reference/workspace.md
+      - Errors: reference/errors.md
+  - Project:
+      - Development and contributions: contributing.md
+      - Security: security.md
+      - Licence and attribution: license.md
+      - Changelog: changelog.md
+      - Release preparation: release/readiness.md
+      - Documentation delivery: release/documentation.md
+      - Verification: release/verification.md

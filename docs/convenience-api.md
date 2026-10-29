@@ -131,15 +131,15 @@ implement every capability. In particular:
 - SQLite/PostgreSQL remain backend implementation choices; this change does not
   create an arbitrary database/table ORM or additional storage drivers.
 - Typed native approval/clarification methods and a persistent `profile.connect()`
-  transport are available. See the [WebSocket contract](../contracts/websocket/gateway.md)
+  transport are available. See the [WebSocket contract](https://github.com/AnasMaar/edith-hermes-sdk/blob/main/contracts/websocket/gateway.md)
   for explicit server-request replies, lifecycle rules, and bridge upgrade requirements.
 - Runtime-provider availability, profile/session action semantics, per-turn
   tools, image publication, and MCP OAuth still depend on backend/native support.
   A generated method does not repair all pre-existing server implementation gaps.
-  See the [latest verification report](verification-2026-09-30.md) for repaired
+  See the [latest verification report](https://github.com/AnasMaar/edith-hermes-sdk/blob/main/docs/verification-2026-09-30.md) for repaired
   adapters and explicitly unsupported overrides.
 - Live Docker, Kubernetes, Linux-process and PostgreSQL checks are recorded in
-  the [latest verification report](verification-2026-09-30.md). Real local-model
+  the [latest verification report](https://github.com/AnasMaar/edith-hermes-sdk/blob/main/docs/verification-2026-09-30.md). Real local-model
   execution now reaches the Python callback, including dynamically added tools.
   Earlier failures remain in the historical reports; lifecycle checks alone
   are still not evidence of successful reasoning or arbitrary model compatibility.

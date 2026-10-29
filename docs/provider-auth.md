@@ -6,7 +6,7 @@ OIDC and KMS are not required. Install the control-plane extra for local runtime
 
 ## An existing instance and a specific profile
 
-Runnable consent example: [examples/provider_login.py](../examples/provider_login.py).
+Runnable consent example: [examples/provider_login.py](https://github.com/AnasMaar/edith-hermes-sdk/blob/main/examples/provider_login.py).
 
 ```python
 from edith_hermes import Hermes, ProviderLoginError
@@ -119,7 +119,7 @@ They are the same contract/implementation, not a second feature set.
 
 ## Compatibility and extensibility
 
-The contract is [providers.openapi.yaml](../contracts/openapi/providers.openapi.yaml).
+The contract is [providers.openapi.yaml](https://github.com/AnasMaar/edith-hermes-sdk/blob/main/contracts/openapi/providers.openapi.yaml).
 Its adapter follows upstream `oauth.py`/`ops.py` at Hermes revision
 `16fe260aab45a524df94c8f635352fd9e6e66fe5`; it does not invent native RPC methods.
 The existing 219-method pinned OpenRPC contract remains unchanged.
