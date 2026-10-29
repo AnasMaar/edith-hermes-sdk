@@ -1,7 +1,27 @@
 # Documentation and SDK verification
 
 This page records the release-preparation checks performed on October 29, 2026.
-It describes checked source and local fixtures; it does not certify untested services.
+It describes checked source, publication checks and local fixtures; it does not certify untested services.
+
+## Published v0.35.0 artifacts
+
+[The GitHub release](https://github.com/AnasMaar/edith-hermes-sdk/releases/tag/v0.35.0)
+was published from source revision `c203496` by the successful
+[release workflow](https://github.com/AnasMaar/edith-hermes-sdk/actions/runs/40952153187).
+[CI for that same revision](https://github.com/AnasMaar/edith-hermes-sdk/actions/runs/40952135020)
+passed all 12 jobs. The release verification suite passed **606 tests**, including six
+new checks for absent, partial, complete, conflicting and unavailable PyPI inventories.
+
+Both published distributions were downloaded again and independently checked against
+the release's SHA-256 manifest and Sigstore bundles. Their signing identity matched
+`release.yml@refs/tags/v0.35.0`. Strict Twine validation and licence/content inspection
+passed on those downloaded files. The published wheel was installed into an empty
+Python 3.13 environment outside the checkout; isolated imports reported version 0.35.0
+from site-packages, and the offline tool example returned `2`.
+
+These are GitHub publication checks. PyPI publication separately requires the account's
+Trusted Publisher registration and a successful run of `publish-pypi.yml`; the
+[release guide](readiness.md) describes that process and digest reconciliation.
 
 ## GitHub CI and hosted-site acceptance
 
